@@ -5,6 +5,8 @@ from src.adapters import ai, storage, userstore
 def make_ai():
     if config.ai_backend == "bedrock":
         return ai.BedrockAI(region=config.aws_region, model_id=config.ai_model_id)
+    if config.ai_backend == "hybrid":
+        return ai.HybridAI(region=config.aws_region, model_id=config.ai_model_id)
     if config.ai_backend == "local":
         return ai.LocalAI()
     raise ValueError(f"Unknown AI_BACKEND: {config.ai_backend!r}")

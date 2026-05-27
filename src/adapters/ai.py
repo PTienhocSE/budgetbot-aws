@@ -3,6 +3,7 @@
 Interface:
     categorize(description, amount, date) -> {"category": str, "confidence": "high|medium|low"}
 """
+import datetime
 import json
 import re
 from typing import Any
@@ -14,8 +15,12 @@ CATEGORIES = [
 ]
 
 
-CATEGORIZE_PROMPT = """Categorize the following bank transaction into exactly one category.
+CATEGORIZE_PROMPT = """Categorize the following transaction into exactly one category.
 Categories: {categories}
+
+IMPORTANT GUIDELINES:
+- If the transaction is about receiving money, salary, or incoming transfers (e.g., "nhận", "lương", "được chuyển", "thu", "lì xì"), you MUST categorize it as "Income".
+- If the transaction is about spending or outgoing money (e.g., "mua", "trả", "chuyển khoản cho", "chi", "ăn", "uống", "đóng"), categorize it into the most appropriate expense category (Food, Transport, etc.).
 
 Transaction: "{description}"
 Amount: {amount}
@@ -23,6 +28,25 @@ Date: {date}
 
 Respond with JSON only. No explanation.
 {{"category": "<category>", "confidence": "high|medium|low"}}"""
+
+
+EXTRACT_TRANSACTIONS_PROMPT = """Extract all financial transactions from the following text (e.g. from a PDF bank statement).
+Categories: {categories}
+
+IMPORTANT GUIDELINES:
+- If the transaction is about receiving money, salary, or incoming transfers (or positive amounts), categorize it as "Income".
+- If the transaction is about spending or outgoing money (or negative amounts), categorize it into the most appropriate expense category.
+- Ensure dates are formatted as YYYY-MM-DD. If year is missing, assume current year.
+- Ensure amounts are positive absolute numbers. The sign is determined by the category later.
+
+Text:
+{text}
+
+Respond strictly with a JSON array of objects. No markdown formatting, no explanations.
+[
+  {{"date": "YYYY-MM-DD", "description": "...", "amount": 12345.67, "category": "...", "confidence": "high|medium|low"}}
+]
+"""
 
 
 def _parse_json_response(text: str) -> dict:
@@ -66,6 +90,175 @@ class BedrockAI:
         text = resp["output"]["message"]["content"][0]["text"]
         return _parse_json_response(text)
 
+    def extract_transactions_from_text(self, text: str) -> list:
+        prompt = EXTRACT_TRANSACTIONS_PROMPT.format(
+            categories=", ".join(CATEGORIES),
+            text=text,
+        )
+        resp = self.runtime.converse(
+            modelId=self.model_id,
+            messages=[{"role": "user", "content": [{"text": prompt}]}],
+            inferenceConfig={"maxTokens": 2000, "temperature": 0.0},
+        )
+        reply = resp["output"]["message"]["content"][0]["text"].strip()
+        if "```" in reply:
+            reply = re.sub(r"^```(?:json)?\n?|```$", "", reply, flags=re.MULTILINE).strip()
+        try:
+            arr = json.loads(reply)
+            if isinstance(arr, list):
+                valid_txns = []
+                for item in arr:
+                    if "date" in item and "description" in item and "amount" in item:
+                        cat = item.get("category", "Other")
+                        if cat not in CATEGORIES:
+                            cat = "Other"
+                        valid_txns.append({
+                            "date": str(item["date"]),
+                            "description": str(item["description"]),
+                            "amount": float(item["amount"]),
+                            "category": cat,
+                            "confidence": item.get("confidence", "medium"),
+                        })
+                return valid_txns
+        except Exception:
+            pass
+        return []
+
+    def chat(self, user_id: str, message: str, userstore) -> str:
+        prompt = """You are BudgetBot, a helpful AI financial coach.
+    Always answer in the same language as the user.
+    You can use tools to fetch the user's spending summary or specific transactions.
+    Always use tools if the user asks about spending, income, last month's totals, category breakdowns, or trends.
+    Answer the user's exact question, not a generic summary.
+    If the user asks about a specific category such as food, transport, shopping, utilities, health, subscriptions, or entertainment:
+    - call get_transactions with the matching category and month if present
+    - sum the returned transaction amounts before answering
+    - do not answer with the top category or the overall total unless the user asked for it
+    If the user asks about trends across 3 months:
+    - fetch each of the last 3 months separately using get_spending_summary
+    - compare the monthly totals and mention whether the trend is up, down, or flat
+    - include 3 brief savings ideas tied to the observed categories
+    Give a concise, friendly, and actionable answer based on the data.
+    Markdown is allowed when it helps readability, but keep it concise and practical."""
+        
+        tool_config = {
+            "tools": [
+                {
+                    "toolSpec": {
+                        "name": "get_spending_summary",
+                        "description": "Fetch the user's spending summary (total and by category). If no month is provided, returns all-time summary.",
+                        "inputSchema": {
+                            "json": {
+                                "type": "object",
+                                "properties": {
+                                    "month": {
+                                        "type": "string",
+                                        "description": "The month in YYYY-MM format. Leave empty for all-time summary."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "toolSpec": {
+                        "name": "get_transactions",
+                        "description": "Fetch a list of specific transactions. Use this if the user asks for detailed line-items.",
+                        "inputSchema": {
+                            "json": {
+                                "type": "object",
+                                "properties": {
+                                    "month": {
+                                        "type": "string",
+                                        "description": "The month in YYYY-MM format."
+                                    },
+                                    "category": {
+                                        "type": "string",
+                                        "description": "Filter by category (e.g. Food, Transport, Utilities)."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+
+        messages = [{"role": "user", "content": [{"text": f"<system>{prompt}</system>\nUser question: {message}"}]}]
+        
+        max_loops = 3
+        loops = 0
+        while loops < max_loops:
+            loops += 1
+            resp = self.runtime.converse(
+                modelId=self.model_id,
+                messages=messages,
+                toolConfig=tool_config,
+                inferenceConfig={"maxTokens": 300, "temperature": 0.7},
+            )
+            
+            stop_reason = resp["stopReason"]
+            output_message = resp["output"]["message"]
+            messages.append(output_message)
+            
+            if stop_reason == "tool_use":
+                tool_results = []
+                for content_block in output_message.get("content", []):
+                    if "toolUse" in content_block:
+                        tool_use = content_block["toolUse"]
+                        tool_name = tool_use["name"]
+                        tool_input = tool_use["input"]
+                        tool_id = tool_use["toolUseId"]
+                        
+                        try:
+                            if tool_name == "get_spending_summary":
+                                month = tool_input.get("month")
+                                data = userstore.summary(user_id, month=month)
+                            elif tool_name == "get_transactions":
+                                month = tool_input.get("month")
+                                category = tool_input.get("category")
+                                data = userstore.list_transactions(user_id, month=month, category=category)
+                            else:
+                                data = {"error": f"Unknown tool: {tool_name}"}
+                        except Exception as e:
+                            data = {"error": str(e)}
+                            
+                        tool_results.append({
+                            "toolResult": {
+                                "toolUseId": tool_id,
+                                "content": [{"json": data}]
+                            }
+                        })
+                
+                messages.append({"role": "user", "content": tool_results})
+            else:
+                for content_block in output_message.get("content", []):
+                    if "text" in content_block:
+                        return content_block["text"]
+                return "No response generated."
+                
+        return "Sorry, I had to stop thinking to save time. Please ask again!"
+
+
+class HybridAI:
+    """Bedrock-first AI with LocalAI fallback for offline/dev runs."""
+
+    def __init__(self, region: str, model_id: str):
+        self.primary = BedrockAI(region=region, model_id=model_id)
+        self.fallback = LocalAI()
+
+    def categorize(self, description: str, amount: float, date: str) -> dict:
+        try:
+            return self.primary.categorize(description, amount, date)
+        except Exception:
+            return self.fallback.categorize(description, amount, date)
+
+    def chat(self, user_id: str, message: str, userstore) -> str:
+        try:
+            return self.primary.chat(user_id, message, userstore)
+        except Exception:
+            return self.fallback.chat(user_id, message, userstore)
+
 
 class LocalAI:
     """Rule-based categorizer. Keyword matching only. Use for development."""
@@ -100,3 +293,99 @@ class LocalAI:
         except (TypeError, ValueError):
             pass
         return {"category": "Other", "confidence": "low"}
+
+    def chat(self, user_id: str, message: str, userstore) -> str:
+        msg = message.lower()
+        import re
+
+        def _previous_month() -> str:
+            today = datetime.date.today().replace(day=1)
+            last_day_previous_month = today - datetime.timedelta(days=1)
+            return last_day_previous_month.strftime("%Y-%m")
+
+        month = _previous_month() if ("tháng trước" in msg or "last month" in msg or "previous month" in msg) else None
+
+        expense_keywords = (
+            "spending",
+            "summary",
+            "tổng",
+            "chi tiêu",
+            "thống kê",
+            "chi bao nhiêu",
+            "ăn uống",
+            "ăn uong",
+            "food",
+            "spent",
+        )
+        income_keywords = (
+            "income",
+            "thu nhập",
+            "doanh thu",
+            "lương",
+            "salary",
+            "nhập",
+        )
+
+        def _extract_category() -> str | None:
+            category_map = [
+                ("Food", ("ăn uống", "an uong", "food", "ăn", "uong", "thực phẩm", "an uong")),
+                ("Transport", ("di chuyển", "transport", "xe", "grab", "taxi", "bus", "metro")),
+                ("Shopping", ("mua sắm", "shopping", "shopping", "shop", "shopee", "lazada", "tiki")),
+                ("Utilities", ("hóa đơn", "utilities", "điện", "nước", "internet", "evn", "fpt", "vnpt")),
+                ("Entertainment", ("giải trí", "entertainment", "movie", "cinema", "game", "concert")),
+                ("Health", ("sức khỏe", "health", "bệnh viện", "pharmacy", "clinic", "thuốc")),
+                ("Subscriptions", ("subscription", "gói", "đăng ký", "netflix", "spotify", "chatgpt")),
+            ]
+            for category, keywords in category_map:
+                if any(keyword in msg for keyword in keywords):
+                    return category
+            return None
+
+        if any(keyword in msg for keyword in income_keywords):
+            summary = userstore.summary(user_id, month=month)
+            if not summary:
+                return "Bạn chưa có giao dịch nào được lưu trữ. Hãy upload file CSV trước nhé!"
+
+            income_total = sum(v['total'] for v in summary.values() if v['total'] > 0)
+            if income_total <= 0:
+                return "Mình chưa thấy khoản thu nhập nào trong dữ liệu hiện tại."
+
+            period_text = "tháng trước" if month else "toàn bộ dữ liệu"
+            return f"Thu nhập của bạn trong {period_text} là {income_total:,.0f}đ."
+        
+        # Handle the /coach prompt which expects JSON
+        if msg.startswith("analyze the following spending summary"):
+            return """[
+              {"title": "Quản lý Tốt", "description": "Bạn đang quản lý chi tiêu rất hiệu quả ở chế độ Local AI. Để có lời khuyên sâu sắc hơn, hãy kết nối AWS Bedrock.", "type": "positive"},
+              {"title": "Cảnh báo Nhỏ", "description": "Lưu ý một số danh mục chi tiêu có thể đang tăng lên. Hãy theo dõi kỹ nhé.", "type": "warning"},
+              {"title": "Mẹo Tiết kiệm", "description": "Thử thiết lập tính năng Cảnh báo (Caps & Alerts) để ngân sách không bao giờ bị vượt ngưỡng.", "type": "neutral"}
+            ]"""
+            
+        if any(keyword in msg for keyword in expense_keywords):
+            summary = userstore.summary(user_id, month=month)
+            if not summary:
+                return "Bạn chưa có giao dịch nào được lưu trữ. Hãy upload file CSV trước nhé!"
+
+            target_category = _extract_category()
+            if target_category:
+                category_total = float(summary.get(target_category, {}).get("total", 0.0))
+                period_text = "tháng trước" if month else "toàn bộ dữ liệu"
+                if category_total < 0:
+                    return f"Dựa trên **{period_text}**, chi tiêu cho **{target_category.lower()}** của bạn là **{-category_total:,.0f}đ**."
+                return f"Dựa trên **{period_text}**, mình chưa thấy khoản chi tiêu nào trong danh mục **{target_category.lower()}**."
+            
+            expenses = {k: v['total'] for k, v in summary.items() if v['total'] < 0}
+            if not expenses:
+                return "Bạn chưa có khoản chi tiêu nào. Quản lý tài chính rất tốt!"
+                
+            top_cat = min(expenses, key=expenses.get)
+            total_expense = sum(expenses.values())
+
+            period_text = "tháng trước" if month else "dữ liệu hiện tại"
+            return f"Dựa trên **{period_text}**, tổng chi tiêu của bạn là **{-total_expense:,.0f}đ**. Bạn đang tiêu tốn nhiều tiền nhất vào danh mục **{top_cat}** với **{-expenses[top_cat]:,.0f}đ**. Bạn có muốn mình phân tích chi tiết hơn không?"
+            
+        elif re.search(r"\b(hi|hello|chào|xin chào)\b", msg):
+            return "Xin chào! Mình là BudgetBot AI 🤖. Mình có thể giúp bạn xem thống kê chi tiêu nhanh chóng. Bạn muốn hỏi gì nào?"
+            
+        else:
+            return f"**LocalAI** chỉ hỗ trợ một số câu lệnh cơ bản. Bạn vừa hỏi: '{message}'. Để trò chuyện phức tạp hơn, tài khoản AWS của bạn cần được mở giới hạn (Quota) trên Bedrock."

@@ -30,18 +30,49 @@ class DynamoDBUserStore:
         sk = f"TXN#{txn['date']}#{uuid.uuid4().hex[:8]}"
         # DynamoDB doesn't accept floats; use Decimal
         item = {**txn, "amount": Decimal(str(txn["amount"]))} if "amount" in txn else txn
-        self.table.put_item(Item={"user_id": user_id, "sk": sk, "created_at": _now(), **item})
+        self.table.put_item(Item={"PK": user_id, "SK": sk, "created_at": _now(), **item})
 
     def list_transactions(self, user_id: str, month: str | None = None) -> list:
         kwargs = {
-            "KeyConditionExpression": "user_id = :u AND begins_with(sk, :p)",
+            "KeyConditionExpression": "PK = :u AND begins_with(SK, :p)",
             "ExpressionAttributeValues": {":u": user_id, ":p": f"TXN#{month}" if month else "TXN#"},
         }
         resp = self.table.query(**kwargs)
-        return [_decimal_to_float(item) for item in resp.get("Items", [])]
+        items = []
+        for item in resp.get("Items", []):
+            d = _decimal_to_float(item)
+            d["id"] = d.get("SK")
+            items.append(d)
+        return items
 
     def summary(self, user_id: str, month: str | None = None) -> dict:
         return _aggregate(self.list_transactions(user_id, month))
+
+    def update_transaction(self, user_id: str, transaction_id: str, updates: dict) -> dict:
+        """Update fields of an existing transaction. transaction_id is the SK value."""
+        from decimal import Decimal
+        expr_parts = []
+        attr_names = {}
+        attr_values = {}
+        for i, (key, val) in enumerate(updates.items()):
+            placeholder = f"#k{i}"
+            value_ph = f":v{i}"
+            expr_parts.append(f"{placeholder} = {value_ph}")
+            attr_names[placeholder] = key
+            attr_values[value_ph] = Decimal(str(val)) if isinstance(val, float) else val
+        update_expr = "SET " + ", ".join(expr_parts)
+        resp = self.table.update_item(
+            Key={"PK": user_id, "SK": transaction_id},
+            UpdateExpression=update_expr,
+            ExpressionAttributeNames=attr_names,
+            ExpressionAttributeValues=attr_values,
+            ReturnValues="ALL_NEW",
+        )
+        return _decimal_to_float(resp.get("Attributes", {}))
+
+    def delete_transaction(self, user_id: str, transaction_id: str) -> None:
+        """Delete a transaction by its SK."""
+        self.table.delete_item(Key={"PK": user_id, "SK": transaction_id})
 
 
 def _decimal_to_float(item: dict) -> dict:
@@ -145,7 +176,7 @@ class SQLiteUserStore:
         self.conn.commit()
 
     def list_transactions(self, user_id: str, month: str | None = None) -> list:
-        sql = "SELECT txn_date, description, amount, category, confidence FROM transactions WHERE user_id = ?"
+        sql = "SELECT id, txn_date, description, amount, category, confidence FROM transactions WHERE user_id = ?"
         params: list = [user_id]
         if month:
             sql += " AND substr(txn_date, 1, 7) = ?"
@@ -153,12 +184,41 @@ class SQLiteUserStore:
         sql += " ORDER BY txn_date DESC"
         cur = self.conn.execute(sql, params)
         return [
-            {"date": r[0], "description": r[1], "amount": r[2], "category": r[3], "confidence": r[4]}
+            {"id": r[0], "date": r[1], "description": r[2], "amount": r[3], "category": r[4], "confidence": r[5]}
             for r in cur.fetchall()
         ]
 
     def summary(self, user_id: str, month: str | None = None) -> dict:
         return _aggregate(self.list_transactions(user_id, month))
+
+    def update_transaction(self, user_id: str, transaction_id: str, updates: dict) -> dict:
+        if not updates:
+            return {}
+        expr_parts = []
+        params = []
+        for key, val in updates.items():
+            if key == "date":
+                expr_parts.append("txn_date = ?")
+            else:
+                expr_parts.append(f"{key} = ?")
+            params.append(val)
+        
+        sql = f"UPDATE transactions SET {', '.join(expr_parts)} WHERE user_id = ? AND id = ?"
+        params.extend([user_id, transaction_id])
+        
+        self.conn.execute(sql, params)
+        self.conn.commit()
+        
+        # Return updated transaction
+        cur = self.conn.execute("SELECT id, txn_date, description, amount, category, confidence FROM transactions WHERE user_id = ? AND id = ?", [user_id, transaction_id])
+        r = cur.fetchone()
+        if r:
+            return {"id": r[0], "date": r[1], "description": r[2], "amount": r[3], "category": r[4], "confidence": r[5]}
+        return {}
+
+    def delete_transaction(self, user_id: str, transaction_id: str) -> None:
+        self.conn.execute("DELETE FROM transactions WHERE user_id = ? AND id = ?", (user_id, transaction_id))
+        self.conn.commit()
 
 
 def _aggregate(rows: list) -> dict:
