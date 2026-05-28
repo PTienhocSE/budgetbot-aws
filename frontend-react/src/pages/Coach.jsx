@@ -5,9 +5,11 @@ import { formatCurrency } from '../utils/format';
 
 function Coach() {
   const [insights, setInsights] = useState(null);
+  const [suggestedCaps, setSuggestedCaps] = useState([]);
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [handlingCap, setHandlingCap] = useState(null);
 
   const generateInsights = async () => {
     setLoading(true);
@@ -16,6 +18,7 @@ function Coach() {
       const res = await apiClient.get('/coach');
       if (res.data.insights) {
         setInsights(res.data.insights);
+        setSuggestedCaps(res.data.suggested_caps || []);
         setChartData(res.data.chartData);
       } else {
         setError('No insights returned.');
@@ -24,6 +27,21 @@ function Coach() {
       setError('Failed to load insights. ' + (err.message));
     }
     setLoading(false);
+  };
+
+  const acceptCap = async (cap) => {
+    setHandlingCap(cap.category);
+    try {
+      await apiClient.post('/caps', { category: cap.category, amount: cap.suggested_cap });
+      setSuggestedCaps(suggestedCaps.filter(c => c.category !== cap.category));
+    } catch (err) {
+      alert("Failed to set cap: " + err.message);
+    }
+    setHandlingCap(null);
+  };
+
+  const ignoreCap = (category) => {
+    setSuggestedCaps(suggestedCaps.filter(c => c.category !== category));
   };
 
   const getIcon = (type) => {
@@ -139,6 +157,31 @@ function Coach() {
               })}
             </div>
 
+            {/* Suggested Caps Section */}
+            {suggestedCaps && suggestedCaps.length > 0 && (
+              <div style={{ padding: '1.5rem', background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 8px 32px rgba(0,0,0,0.05)' }}>
+                <h4 style={{ marginTop: 0, color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fa-solid fa-bullseye" style={{ color: 'var(--primary)' }}></i> Suggested Budget Caps
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {suggestedCaps.map((cap, idx) => (
+                    <div key={idx} style={{ padding: '1rem', background: 'rgba(255,255,255,0.6)', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                      <div style={{ flex: '1 1 300px' }}>
+                        <h5 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-color)', fontSize: '1.1rem' }}>{cap.category}</h5>
+                        <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>{cap.reason}</p>
+                        <div style={{ fontWeight: 'bold', color: 'var(--primary)', fontSize: '1.2rem' }}>{formatCurrency(cap.suggested_cap)}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <button className="btn-outline" onClick={() => ignoreCap(cap.category)} disabled={handlingCap === cap.category}>Ignore</button>
+                        <button className="btn-primary" style={{ marginTop: 0 }} onClick={() => acceptCap(cap)} disabled={handlingCap === cap.category}>
+                          {handlingCap === cap.category ? 'Saving...' : 'Accept'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

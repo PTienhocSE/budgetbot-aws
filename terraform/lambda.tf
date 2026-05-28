@@ -56,10 +56,22 @@ data "aws_iam_policy_document" "backend_permissions" {
 
   statement {
     actions = [
-      "bedrock:InvokeModel",
+      "bedrock:InvokeModel"
+    ]
+    resources = [
+      "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-*",
+      "arn:aws:bedrock:us-*:*:inference-profile/us.anthropic.claude-*"
+    ]
+  }
+
+  statement {
+    actions = [
       "textract:DetectDocumentText"
     ]
     resources = ["*"]
+    # NOTE: Textract DetectDocumentText (synchronous) does NOT support
+    # resource-level permissions — AWS requires Resource: "*".
+    # See: https://docs.aws.amazon.com/textract/latest/dg/security_iam_service-with-iam.html
   }
 }
 
@@ -106,7 +118,7 @@ resource "aws_lambda_function" "backend" {
 
   environment {
     variables = {
-      AI_BACKEND        = "bedrock"
+      AI_BACKEND        = "hybrid"
       AI_MODEL_ID       = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
       STORAGE_BACKEND   = "s3"
       STORAGE_BUCKET    = aws_s3_bucket.uploads.id

@@ -54,7 +54,7 @@ class TransactionRequest(BaseModel):
     description: str
     amount: float
     category: str = "uncategorized"
-    confidence: float = 0.0
+    confidence: str = "high"
 
 class TransactionUpdateRequest(BaseModel):
     date: Optional[str] = None

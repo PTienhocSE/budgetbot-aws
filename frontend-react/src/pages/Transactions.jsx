@@ -7,6 +7,12 @@ function Transactions() {
   const [loading, setLoading] = useState(false);
   const [month, setMonth] = useState('');
   const [editingTxn, setEditingTxn] = useState(null);
+  const [debug, setDebug] = useState(false);
+  
+  useEffect(() => {
+    window.enableDebug = () => setDebug(true);
+    window.disableDebug = () => setDebug(false);
+  }, []);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -243,6 +249,11 @@ function Transactions() {
                     <span style={{background: 'var(--primary-light)', color: 'var(--primary-dark)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 600}}>
                       {t.category}
                     </span>
+                    {debug && t.engine && (
+                      <span style={{background: t.engine === 'local' ? '#10b981' : '#8b5cf6', color: 'white', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, marginLeft: '6px', textTransform: 'uppercase'}}>
+                        {t.engine}
+                      </span>
+                    )}
                   </td>
                   <td style={{color: t.amount >= 0 ? 'var(--success)' : 'var(--error)', fontWeight: 600}}>
                     {t.amount >= 0 ? '+' : '-'}{formatCurrency(Math.abs(t.amount))}

@@ -134,8 +134,8 @@ function Overview() {
               ))}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-              <button className="btn" onClick={() => setReviewTransactions([])} style={{ background: '#e5e7eb', color: '#374151' }}>Cancel All</button>
-              <button className="btn-primary" onClick={handleReviewSave}>Confirm & Save All</button>
+              <button className="btn-outline" onClick={() => setReviewTransactions([])} style={{ borderColor: '#94a3b8', color: '#64748b' }}>Cancel All</button>
+              <button style={{marginTop:'0'}} className="btn-primary" onClick={handleReviewSave}>Confirm & Save All</button>
             </div>
           </div>
         </div>

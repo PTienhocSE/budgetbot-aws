@@ -21,6 +21,7 @@ Categories: {categories}
 IMPORTANT GUIDELINES:
 - If the transaction is about receiving money, salary, or incoming transfers (e.g., "nhận", "lương", "được chuyển", "thu", "lì xì"), you MUST categorize it as "Income".
 - If the transaction is about spending or outgoing money (e.g., "mua", "trả", "chuyển khoản cho", "chi", "ăn", "uống", "đóng"), categorize it into the most appropriate expense category (Food, Transport, etc.).
+- IMPORTANT FOR CONFIDENCE: If the description looks like an opaque transaction code (e.g., 'FT0024...', 'TRX...', random alphanumeric strings with no obvious meaning) or is highly ambiguous, assign confidence "low". Otherwise, if it's somewhat ambiguous, assign "medium". Usually assign "high".
 
 Transaction: "{description}"
 Amount: {amount}
@@ -38,6 +39,7 @@ IMPORTANT GUIDELINES:
 - If the transaction is about spending or outgoing money (or negative amounts), categorize it into the most appropriate expense category.
 - Ensure dates are formatted as YYYY-MM-DD. If year is missing, assume current year.
 - Ensure amounts are positive absolute numbers. The sign is determined by the category later.
+- IMPORTANT FOR CONFIDENCE: If the description looks like an opaque transaction code (e.g., 'FT0024...', 'TRX...', random alphanumeric strings with no obvious meaning), assign confidence "low". Otherwise, if it's somewhat ambiguous, assign "medium". Usually assign "high".
 
 Text:
 {text}
@@ -61,12 +63,13 @@ def _parse_json_response(text: str) -> dict:
             obj = json.loads(match.group())
             if obj.get("category") in CATEGORIES:
                 return {
-                    "category": obj["category"],
+                    "category": obj.get("category", "Other"),
                     "confidence": obj.get("confidence", "medium"),
+                    "engine": "bedrock"
                 }
         except json.JSONDecodeError:
             pass
-    return {"category": "Other", "confidence": "low"}
+    return {"category": "Other", "confidence": "low", "engine": "bedrock"}
 
 
 class BedrockAI:
@@ -118,6 +121,7 @@ class BedrockAI:
                             "amount": float(item["amount"]),
                             "category": cat,
                             "confidence": item.get("confidence", "medium"),
+                            "engine": "bedrock"
                         })
                 return valid_txns
         except Exception:
@@ -125,7 +129,9 @@ class BedrockAI:
         return []
 
     def chat(self, user_id: str, message: str, userstore) -> str:
-        prompt = """You are BudgetBot, a helpful AI financial coach.
+        from datetime import datetime, timezone
+        current_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        prompt = f"""You are BudgetBot, a helpful AI financial coach. Today is {current_date}.
     Always answer in the same language as the user.
     You can use tools to fetch the user's spending summary or specific transactions.
     Always use tools if the user asks about spending, income, last month's totals, category breakdowns, or trends.
@@ -194,7 +200,7 @@ class BedrockAI:
                 modelId=self.model_id,
                 messages=messages,
                 toolConfig=tool_config,
-                inferenceConfig={"maxTokens": 300, "temperature": 0.7},
+                inferenceConfig={"maxTokens": 2000, "temperature": 0.7},
             )
             
             stop_reason = resp["stopReason"]
@@ -249,15 +255,29 @@ class HybridAI:
 
     def categorize(self, description: str, amount: float, date: str) -> dict:
         try:
-            return self.primary.categorize(description, amount, date)
+            local_res = self.fallback.categorize(description, amount, date)
+            if local_res.get("category") != "Other":
+                return local_res
         except Exception:
-            return self.fallback.categorize(description, amount, date)
+            pass
+
+        try:
+            return self.primary.categorize(description, amount, date)
+        except Exception as e:
+            logger.error(f"Primary AI failed: {e}. Falling back.")
+            return {"category": "Other", "confidence": "low", "engine": "fallback"}
 
     def chat(self, user_id: str, message: str, userstore) -> str:
         try:
             return self.primary.chat(user_id, message, userstore)
         except Exception:
             return self.fallback.chat(user_id, message, userstore)
+
+    def extract_transactions_from_text(self, text: str) -> list:
+        try:
+            return self.primary.extract_transactions_from_text(text)
+        except Exception:
+            return self.fallback.extract_transactions_from_text(text)
 
 
 class LocalAI:
@@ -285,14 +305,23 @@ class LocalAI:
         for category, keywords in self.KEYWORDS.items():
             for kw in keywords:
                 if kw in desc_lower:
-                    return {"category": category, "confidence": "medium"}
+                    # Đã có trong từ khoá thì chắc chắn đúng, confidence = high
+                    return {"category": category, "confidence": "high", "engine": "local"}
         # Positive amount → income heuristic
         try:
             if float(amount) > 0:
-                return {"category": "Income", "confidence": "low"}
+                return {"category": "Income", "confidence": "low", "engine": "local"}
         except (TypeError, ValueError):
             pass
-        return {"category": "Other", "confidence": "low"}
+        return {
+            "category": "Other",
+            "confidence": "low",
+            "engine": "local"
+        }
+
+    def extract_transactions_from_text(self, text: str) -> list:
+        # Fallback LocalAI cannot extract transactions from raw text reliably
+        return []
 
     def chat(self, user_id: str, message: str, userstore) -> str:
         msg = message.lower()

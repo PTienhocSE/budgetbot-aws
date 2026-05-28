@@ -110,6 +110,7 @@ def handle_upload(
                 "amount": row["amount"],
                 "category": cat_result["category"],
                 "confidence": cat_result["confidence"],
+                "engine": cat_result.get("engine", "unknown")
             }
             if txn["category"].lower() == "income":
                 txn["amount"] = abs(txn["amount"])
@@ -217,6 +218,7 @@ def handle_chat_transaction(user_id: str, message: str, ai_client, userstore) ->
     )
     txn["category"] = cat_result.get("category", "uncategorized")
     txn["confidence"] = cat_result.get("confidence", 0.0)
+    txn["engine"] = cat_result.get("engine", "unknown")
 
     # Convert spending amount to negative (outflow), except for Income
     if txn["category"].lower() == "income":
@@ -239,50 +241,68 @@ def handle_chat_transaction(user_id: str, message: str, ai_client, userstore) ->
 
 def handle_coach(user_id: str, ai_client, userstore) -> dict:
     """Generate budget insights based on the user's spending data."""
-    # Fetch ALL transactions to give the AI real context
-    transactions = userstore.list_transactions(user_id, month=None)
+    from datetime import datetime, timezone
+    import json
+    
+    now = datetime.now(timezone.utc)
+    current_month_str = now.strftime("%Y-%m")
+    if now.month == 1:
+        prev_month_str = f"{now.year - 1}-12"
+    else:
+        prev_month_str = f"{now.year}-{now.month - 1:02d}"
+        
+    current_txns = userstore.list_transactions(user_id, month=current_month_str)
+    prev_txns = userstore.list_transactions(user_id, month=prev_month_str)
     
     # Calculate category spending distribution in Python for chartData
-    category_totals = {}
-    total_spend = 0
-    total_income = 0
+    curr_totals = {}
+    prev_totals = {}
     
-    for txn in transactions:
-        cat = txn.get("category", "Other")
+    for txn in current_txns:
         amt = float(txn.get("amount", 0))
         if amt < 0:
-            category_totals[cat] = category_totals.get(cat, 0) + abs(amt)
-            total_spend += abs(amt)
-        else:
-            total_income += amt
+            cat = txn.get("category", "Other")
+            curr_totals[cat] = curr_totals.get(cat, 0) + abs(amt)
             
-    chartData = [{"name": k, "value": v} for k, v in category_totals.items()]
+    for txn in prev_txns:
+        amt = float(txn.get("amount", 0))
+        if amt < 0:
+            cat = txn.get("category", "Other")
+            prev_totals[cat] = prev_totals.get(cat, 0) + abs(amt)
+            
+    chartData = [{"name": k, "value": v} for k, v in curr_totals.items()]
     chartData = sorted(chartData, key=lambda x: x["value"], reverse=True)
     
-    summary_text = f"Total Spend: {total_spend}. Total Income: {total_income}. By Category: {category_totals}"
+    summary_text = f"Previous Month ({prev_month_str}) Spending: {prev_totals}. Current Month ({current_month_str}) Spending: {curr_totals}."
     
-    prompt = f"""Analyze the user's financial data and provide 3-5 concise, highly actionable financial insights. 
+    prompt = f"""Analyze the user's financial data and provide financial insights and budget cap suggestions. 
 Data Summary: {summary_text}
 
-Format the output STRICTLY as a JSON array of objects. Do not include markdown code block wrappers (like ```json), just the raw JSON.
-Each object must have:
-- "title": A short, catchy title for the insight.
-- "description": A brief explanation of the observation.
-- "type": "positive", "warning", or "neutral".
-- "actionable_steps": An array of 2-3 short, specific strings the user can do right now to improve.
+Format the output STRICTLY as a JSON object. Do not include markdown code block wrappers (like ```json), just the raw JSON.
+The JSON object must have:
+- "insights": An array of 3-5 insight objects. Each insight has: "title" (string), "description" (string), "type" ("positive", "warning", or "neutral"), and "actionable_steps" (array of strings).
+- "suggested_caps": An array of budget cap suggestions. Each suggestion has: "category" (string), "suggested_cap" (number, positive integer), and "reason" (string). Only suggest caps for categories where the user is overspending or spending significantly.
 
 Example:
-[
-  {{
-    "title": "High Food Spending",
-    "description": "You spent heavily on Food this month.",
-    "type": "warning",
-    "actionable_steps": ["Cook at home 3 times this week", "Review recent restaurant bills"]
-  }}
-]
+{{
+  "insights": [
+    {{
+      "title": "High Food Spending",
+      "description": "You spent heavily on Food this month.",
+      "type": "warning",
+      "actionable_steps": ["Cook at home 3 times this week"]
+    }}
+  ],
+  "suggested_caps": [
+    {{
+      "category": "Food",
+      "suggested_cap": 2000000,
+      "reason": "Based on last month's spending of 2.5M, a 2M cap will help you save."
+    }}
+  ]
+}}
 """
     
-    import json
     reply = ai_client.chat(user_id, prompt, userstore)
     
     try:
@@ -292,22 +312,29 @@ Example:
         elif "```" in reply:
             reply = reply.split("```")[1].split("```")[0].strip()
             
-        insights = json.loads(reply)
-        if not isinstance(insights, list):
-            raise ValueError("Not a list")
-    except Exception:
+        start_idx = reply.find('{')
+        end_idx = reply.rfind('}')
+        if start_idx != -1 and end_idx != -1:
+            reply = reply[start_idx:end_idx+1]
+            
+        result = json.loads(reply)
+        insights = result.get("insights", [])
+        suggested_caps = result.get("suggested_caps", [])
+    except Exception as e:
         # Fallback if parsing fails
         insights = [
             {
-                "title": "AI Insight", 
-                "description": reply, 
+                "title": "AI Insight Error", 
+                "description": f"Failed to parse AI output. Raw text: {reply}. Error: {str(e)}", 
                 "type": "neutral",
-                "actionable_steps": ["Review your transactions manually."]
+                "actionable_steps": ["Check the backend logs."]
             }
         ]
+        suggested_caps = []
         
     return {
         "insights": insights,
+        "suggested_caps": suggested_caps,
         "chartData": chartData
     }
 
