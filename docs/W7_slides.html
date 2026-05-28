@@ -1,0 +1,2084 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>W7 Capstone Hackathon — BudgetBot AI Money Coach</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap&subset=vietnamese"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --aws: #ff9900;
+        --blue: #42a5f5;
+        --green: #66bb6a;
+        --bg: #0b1220;
+        --panel: #111c2e;
+        --muted: #b0bec5;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+        background: #050914;
+        font-family: "Montserrat", sans-serif;
+        color: #fff;
+      }
+      .deck {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 32px;
+        padding: 32px 0;
+      }
+      .slide-container {
+        width: 1280px;
+        height: 720px;
+        position: relative;
+        background: linear-gradient(135deg, #0b1220 0%, #1a2a40 100%);
+        overflow: hidden;
+        box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+        page-break-after: always;
+      }
+      .grid-pattern {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 153, 0, 0.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 153, 0, 0.035) 1px, transparent 1px);
+        background-size: 40px 40px;
+        z-index: 0;
+      }
+      .circle {
+        position: absolute;
+        border-radius: 50%;
+        opacity: 0.16;
+        filter: blur(0.2px);
+      }
+      .circle.orange {
+        width: 520px;
+        height: 520px;
+        right: -160px;
+        top: -160px;
+        background: radial-gradient(circle, var(--aws) 0%, transparent 70%);
+      }
+      .circle.blue {
+        width: 340px;
+        height: 340px;
+        left: -90px;
+        bottom: -120px;
+        background: radial-gradient(circle, var(--blue) 0%, transparent 70%);
+      }
+      .logo {
+        position: absolute;
+        top: 48px;
+        left: 78px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        z-index: 5;
+        color: #fff;
+        font-family: "Montserrat", sans-serif;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+      }
+      .logo i {
+        color: var(--aws);
+        font-size: 25px;
+      }
+      .slide-no {
+        position: absolute;
+        right: 72px;
+        bottom: 42px;
+        color: #78909c;
+        font-size: 14px;
+        z-index: 10;
+      }
+      .accent-bar {
+        position: absolute;
+        left: 78px;
+        top: 145px;
+        width: 8px;
+        height: 420px;
+        border-radius: 6px;
+        background: linear-gradient(180deg, var(--aws), #ffb84d);
+        box-shadow: 0 0 22px rgba(255, 153, 0, 0.32);
+        z-index: 5;
+      }
+      .content {
+        position: absolute;
+        z-index: 10;
+        left: 112px;
+        right: 72px;
+        top: 120px;
+        bottom: 70px;
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: "Montserrat", sans-serif;
+      }
+      .title {
+        font-size: 62px;
+        line-height: 1.08;
+        font-weight: 900;
+        letter-spacing: -1px;
+      }
+      .title span,
+      .orange {
+        color: var(--aws);
+      }
+      .subtitle {
+        color: var(--muted);
+        font-size: 24px;
+        font-weight: 300;
+        margin-top: 18px;
+      }
+      .kicker {
+        color: var(--aws);
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 12px;
+      }
+      .section-title {
+        font-size: 38px;
+        font-weight: 800;
+        margin-bottom: 18px;
+      }
+      .card {
+        background: rgba(17, 28, 46, 0.78);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 22px;
+        padding: 22px;
+        box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
+      }
+      .card h3 {
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid rgba(255, 153, 0, 0.35);
+        color: #ffd39a;
+        background: rgba(255, 153, 0, 0.08);
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .flow {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-top: 22px;
+      }
+      .node {
+        min-width: 130px;
+        text-align: center;
+        padding: 14px 12px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        font-weight: 700;
+        font-size: 14px;
+      }
+      .arrow {
+        color: var(--aws);
+        font-size: 24px;
+      }
+      .code {
+        background: #07101f;
+        border: 1px solid rgba(66, 165, 245, 0.25);
+        color: #cde8ff;
+        border-radius: 16px;
+        padding: 16px;
+        font-family: Consolas, monospace;
+        font-size: 14px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+      }
+      .two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      .three {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+      }
+      .metric {
+        font-size: 34px;
+        font-weight: 900;
+        color: #fff;
+        font-family: "Montserrat", sans-serif;
+      }
+      .table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 8px;
+        font-size: 14px;
+      }
+      .table td,
+      .table th {
+        padding: 10px 14px;
+        background: rgba(255, 255, 255, 0.06);
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .table th {
+        color: #ffd39a;
+        text-align: left;
+        background: rgba(255, 153, 0, 0.08);
+      }
+      .table td:first-child,
+      .table th:first-child {
+        border-radius: 14px 0 0 14px;
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .table td:last-child,
+      .table th:last-child {
+        border-radius: 0 14px 14px 0;
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .img-evidence {
+        width: 100%;
+        height: auto;
+        max-height: 320px;
+        object-fit: contain;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(0, 0, 0, 0.5);
+      }
+      .img-evidence.small {
+        max-height: 160px;
+      }
+      .img-evidence.large {
+        max-height: 420px;
+      }
+      .presentation-mode {
+        overflow: hidden;
+        background: #000;
+      }
+      .presentation-mode .deck {
+        padding: 0;
+        gap: 0;
+        width: 100vw;
+        height: 100vh;
+      }
+      .presentation-mode .slide-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(var(--scale, 1));
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s;
+        box-shadow: none;
+        margin: 0;
+      }
+      .presentation-mode .slide-container.active {
+        opacity: 1;
+        visibility: visible;
+        z-index: 100;
+      }
+      .controls {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        display: flex;
+        gap: 12px;
+        z-index: 1000;
+      }
+      .btn {
+        background: rgba(11, 18, 32, 0.8);
+        color: var(--aws);
+        border: 1px solid rgba(255, 153, 0, 0.4);
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        transition: all 0.2s;
+        backdrop-filter: blur(4px);
+      }
+      .btn:hover {
+        background: rgba(255, 153, 0, 0.2);
+        transform: scale(1.05);
+      }
+      .presenter {
+        position: absolute;
+        left: 78px;
+        bottom: 38px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        z-index: 10;
+        font-size: 13px;
+        font-weight: 600;
+        color: #90caf9;
+        background: rgba(66, 165, 245, 0.08);
+        border: 1px solid rgba(66, 165, 245, 0.25);
+        padding: 6px 14px;
+        border-radius: 999px;
+        backdrop-filter: blur(4px);
+      }
+      .presenter i {
+        color: #42a5f5;
+        font-size: 12px;
+      }
+      @media print {
+        body {
+          background: white;
+        }
+        .deck {
+          padding: 0;
+          gap: 0;
+        }
+        .slide-container {
+          box-shadow: none;
+        }
+        .controls {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="controls">
+      <button class="btn" id="prevBtn" title="Previous Slide">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      <button class="btn" id="nextBtn" title="Next Slide">
+        <i class="fas fa-chevron-right"></i>
+      </button>
+      <button class="btn" id="fsBtn" title="Toggle Fullscreen">
+        <i class="fas fa-expand"></i>
+      </button>
+    </div>
+    <div class="deck">
+      <!-- ============ SLIDE 1: COVER ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fab fa-aws"></i><span>BUDGETBOT — AI MONEY COACH</span>
+        </div>
+        <div class="accent-bar"></div>
+        <div class="content" style="top: 175px">
+          <h1 class="title">
+            W7 Capstone<br /><span>Hackathon</span><br />Evidence Pack
+          </h1>
+          <p class="subtitle">
+            FinTech AI Money Coach — Tự động đọc sao kê, phân loại chi tiêu & tư
+            vấn tài chính
+          </p>
+          <div class="flow" style="margin-top: 38px">
+            <span class="pill"><i class="fas fa-users"></i> Group G13</span>
+            <span class="pill"
+              ><i class="fas fa-calendar-check"></i> 28/05/2026</span
+            >
+            <span class="pill"
+              ><i class="fab fa-github"></i> budgetbot-aws</span
+            >
+            <span class="pill"
+              ><i class="fas fa-globe"></i> d39sr1v8scwccx.cloudfront.net</span
+            >
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 2: TEAM ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-users"></i><span>TEAM MEMBERS</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Group G13</div>
+          <h2 class="section-title">Thành viên nhóm</h2>
+          <div class="three" style="margin-top: 8px">
+            <div class="card">
+              <h3><i class="fas fa-crown orange"></i> Trần Phúc Tiến</h3>
+              <p class="muted" style="font-size: 12px">
+                Bedrock Converse API, Stateful Chat, Async S3 Processor,
+                Textract OCR
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-user orange"></i> Bùi Thị Thùy Trang</h3>
+              <p class="muted" style="font-size: 12px">
+                Terraform IaC (VPC, API GW, CloudFront, IAM), KMS, Deploy
+                Scripts
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-user orange"></i> Võ Hồng Đức</h3>
+              <p class="muted" style="font-size: 12px">
+                S3 Remediation Lambda, EventBridge Rule, Architecture Diagram
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-user orange"></i> Trần Quốc Kiệt</h3>
+              <p class="muted" style="font-size: 12px">
+                Bedrock Config, Tool-Calling (get_spending / get_transactions),
+                System Prompt
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-user orange"></i> Nguyễn Ngọc Giao</h3>
+              <p class="muted" style="font-size: 12px">
+                FastAPI Routers, Mangum Integration, JWT Auth, Upload Status API
+              </p>
+            </div>
+            <div class="card">
+              <h3>
+                <i class="fas fa-user orange"></i> Nguyễn Quách Khang Ninh
+              </h3>
+              <p class="muted" style="font-size: 12px">
+                pytest Test Suite, CloudWatch Alarms, AWS Budgets, Cost Guard
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-user orange"></i> Nguyễn Tấn Huy</h3>
+              <p class="muted" style="font-size: 12px">
+                DynamoDB Schema (PK/SK/GSI), Query Logic, Backup Plan
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 4: DOMAIN & USE CASE ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-lightbulb"></i><span>DOMAIN & USE CASE</span>
+        </div>
+        <div class="content">
+          <div class="kicker">FinTech — Domain B</div>
+          <h2 class="section-title">
+            AI Money Coach — Quản lý tài chính thông minh
+          </h2>
+          <div class="two">
+            <div class="card">
+              <h3><i class="fas fa-bullseye orange"></i> Vấn đề & Giải pháp</h3>
+              <ul class="muted list-disc pl-6 space-y-3 text-sm">
+                <li>Tự động đọc sao kê ngân hàng (CSV/PDF/ảnh)</li>
+                <li>Bedrock AI phân loại giao dịch & đánh giá confidence</li>
+                <li>
+                  Theo dõi chi phí real-time & đưa ra lời khuyên tài chính
+                </li>
+                <li>Manual Review cho giao dịch confidence thấp</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-chart-line orange"></i> Market & Target</h3>
+              <ul class="muted list-disc pl-6 space-y-3 text-sm">
+                <li>
+                  <b>Target Users:</b> Cá nhân muốn quản lý chi tiêu không mất
+                  thời gian nhập liệu thủ công
+                </li>
+                <li>
+                  <b>Market Reasoning:</b> Quản lý tài chính cá nhân là nhu cầu
+                  thiết yếu. AI tự động hoá khâu khó nhất
+                </li>
+                <li><b>Real-world Parallel:</b> Cleo AI, Rocket Money</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 4: ARCHITECTURE ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo">
+          <i class="fas fa-project-diagram"></i
+          ><span>ARCHITECTURE OVERVIEW</span>
+        </div>
+        <div class="content">
+          <div class="kicker">System Topology</div>
+          <h2 class="section-title">BudgetBot — Event-Driven Serverless</h2>
+          <div
+            style="
+              height: calc(100% - 80px);
+              display: flex;
+              justify-content: center;
+              align-items: center;
+            "
+          >
+            <img
+              src="images/architectdiagram.png"
+              style="
+                max-height: 100%;
+                max-width: 100%;
+                object-fit: contain;
+                border-radius: 12px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+              "
+              alt="AWS Architecture Diagram"
+            />
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 3: BACKEND TASK ASSIGNMENT ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo">
+          <i class="fas fa-tasks"></i><span>TASK ASSIGNMENT</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Phân công Backend</div>
+          <h2 class="section-title">Backend Task Assignment</h2>
+          <div class="flex justify-center" style="height: 440px">
+            <img
+              src="images/back_task.png"
+              class="img-evidence"
+              style="max-height: 100%; max-width: 95%; height: 100%"
+            />
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 5: ARCHITECTURE FLOW ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-stream"></i><span>PROCESSING FLOW</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Event-driven async</div>
+          <h2 class="section-title">Upload → Process → Review</h2>
+          <div class="flow">
+            <div class="node">User<br />Upload</div>
+            <div class="arrow">→</div>
+            <div class="node">API<br />Gateway</div>
+            <div class="arrow">→</div>
+            <div class="node">S3<br />PutObject</div>
+            <div class="arrow">→</div>
+            <div class="node">Processor<br />Lambda</div>
+            <div class="arrow">→</div>
+            <div class="node">Bedrock<br />AI</div>
+            <div class="arrow">→</div>
+            <div class="node">DynamoDB</div>
+          </div>
+          <div class="three mt-6" style="margin-top: 28px">
+            <div class="card">
+              <h3><i class="fas fa-bolt orange"></i> Async Design</h3>
+              <p class="muted" style="font-size: 13px">
+                S3 Event → Lambda thay vì xử lý trực tiếp trên API Gateway. Giải
+                quyết timeout 29s cho file PDF dài.
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-poll orange"></i> Polling Status</h3>
+              <p class="muted" style="font-size: 13px">
+                Frontend poll GET /upload/status/{job_id} mỗi 3s. Hiển thị
+                processing pill → success toast.
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-user-check orange"></i> Manual Review</h3>
+              <p class="muted" style="font-size: 13px">
+                Giao dịch confidence thấp → Modal review để user xác nhận
+                category.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 6: TRADE-OFFS ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-balance-scale"></i><span>TRADE-OFF DECISIONS</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Architecture decisions</div>
+          <h2 class="section-title">3 Trade-off Justifications</h2>
+          <div class="three">
+            <div class="card">
+              <h3><i class="fas fa-sync-alt orange"></i> Async vs Sync</h3>
+              <p class="muted" style="font-size: 13px">
+                Chọn Event-Driven Async (S3 → Lambda) thay vì xử lý trực tiếp
+                trên API Gateway để giải quyết giới hạn timeout 29s. Đổi lại
+                Frontend phải Polling.
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-database orange"></i> DynamoDB vs RDS</h3>
+              <p class="muted" style="font-size: 13px">
+                Chọn DynamoDB PAY_PER_REQUEST để scale-to-zero tiết kiệm chi
+                phí. Đổi lại không hỗ trợ query quan hệ phức tạp.
+              </p>
+            </div>
+            <div class="card">
+              <h3>
+                <i class="fas fa-network-wired orange"></i> No NAT Gateway
+              </h3>
+              <p class="muted" style="font-size: 13px">
+                VPC Interface Endpoints cho Bedrock & Textract, tiết kiệm
+                $32/tháng NAT Gateway. Đổi lại chỉ gọi được services hỗ trợ
+                PrivateLink.
+              </p>
+            </div>
+          </div>
+          <div class="card" style="margin-top: 20px; padding: 16px 22px">
+            <div
+              class="flow"
+              style="margin-top: 0; justify-content: space-around"
+            >
+              <div style="text-align: center">
+                <span class="pill"
+                  ><i class="fas fa-server"></i> Lambda arm64</span
+                ><br /><span class="muted" style="font-size: 12px"
+                  >2 Functions: API + Processor</span
+                >
+              </div>
+              <div style="text-align: center">
+                <span class="pill"
+                  ><i class="fas fa-brain"></i> Bedrock Claude Haiku</span
+                ><br /><span class="muted" style="font-size: 12px"
+                  >Via Interface Endpoint</span
+                >
+              </div>
+              <div style="text-align: center">
+                <span class="pill"
+                  ><i class="fas fa-shield-halved"></i> S3 + CloudFront
+                  OAC</span
+                ><br /><span class="muted" style="font-size: 12px"
+                  >Static Frontend + CDN</span
+                >
+              </div>
+              <div style="text-align: center">
+                <span class="pill"><i class="fas fa-eye"></i> Textract</span
+                ><br /><span class="muted" style="font-size: 12px"
+                  >OCR fallback for images</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 7: VPC & NETWORK ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-network-wired"></i><span>VPC & NETWORK</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Network security</div>
+          <h2 class="section-title">Private-Only VPC — No Internet Gateway</h2>
+          <div class="two">
+            <div class="card">
+              <h3>
+                <i class="fas fa-shield-halved orange"></i> VPC Configuration
+              </h3>
+              <ul
+                class="muted list-disc pl-6 space-y-2"
+                style="font-size: 14px"
+              >
+                <li><b>VPC ID:</b> vpc-08b07ea58d6be0d84</li>
+                <li><b>CIDR:</b> 10.0.0.0/16</li>
+                <li>
+                  <b>Private Subnets:</b> 2 AZs (10.0.1.0/24, 10.0.2.0/24)
+                </li>
+                <li><b>Route Tables:</b> Default local, no IGW</li>
+                <li><b>Flow Logs:</b> Enabled → CloudWatch</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-plug orange"></i> Interface Endpoints</h3>
+              <ul
+                class="muted list-disc pl-6 space-y-2"
+                style="font-size: 14px"
+              >
+                <li>
+                  <span class="pill" style="font-size: 12px"
+                    >com.amazonaws.us-east-1.bedrock-runtime</span
+                  >
+                </li>
+                <li style="margin-top: 8px">
+                  <span class="pill" style="font-size: 12px"
+                    >com.amazonaws.us-east-1.textract</span
+                  >
+                </li>
+                <li style="margin-top: 12px">
+                  Lambda SG: outbound to VPC Endpoints only
+                </li>
+                <li>S3 bucket SG: inbound from CloudFront OAC</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 8: VPC EVIDENCE ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo">
+          <i class="fas fa-camera"></i><span>VPC — EVIDENCE</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">VPC Resource Map & Endpoints</h2>
+          <div class="two" style="height: 400px">
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-map"></i> Resource Map
+              </h3>
+              <img
+                src="images/vpc_resource_map.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-plug"></i> VPC Endpoints
+              </h3>
+              <img
+                src="images/vpc_endpoints.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 9: VPC FLOW LOGS EVIDENCE ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo">
+          <i class="fas fa-camera"></i><span>VPC — FLOW LOGS</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">VPC Flow Logs — Audit Trail</h2>
+          <div class="flex justify-center" style="height: 420px">
+            <img
+              src="images/vpc_flow_logs.png"
+              class="img-evidence"
+              style="max-height: 100%; max-width: 80%; height: 100%"
+            />
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 10: IAM & SECURITY ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-lock"></i><span>IAM & SECURITY</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Least-privilege access</div>
+          <h2 class="section-title">IAM Roles & Policies</h2>
+          <div class="three">
+            <div class="card">
+              <h3><i class="fas fa-cog orange"></i> Lambda Exec Role</h3>
+              <ul
+                class="muted"
+                style="
+                  font-size: 12px;
+                  list-style: disc;
+                  padding-left: 18px;
+                  line-height: 1.8;
+                "
+              >
+                <li>DynamoDB: CRUD on table ARN</li>
+                <li>S3: PutObject/GetObject on uploads bucket</li>
+                <li>KMS: Decrypt/GenerateDataKey</li>
+                <li>Bedrock: InvokeModel (scoped ARN)</li>
+                <li>Textract: DetectDocumentText</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>
+                <i class="fas fa-hard-hat orange"></i> S3 Remediation Role
+              </h3>
+              <ul
+                class="muted"
+                style="
+                  font-size: 12px;
+                  list-style: disc;
+                  padding-left: 18px;
+                  line-height: 1.8;
+                "
+              >
+                <li>s3:PutBucketPublicAccessBlock</li>
+                <li>s3:GetBucketPublicAccessBlock</li>
+                <li>CloudWatch Logs access</li>
+                <li>Scoped to uploads bucket only</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-archive orange"></i> Backup Role</h3>
+              <ul
+                class="muted"
+                style="
+                  font-size: 12px;
+                  list-style: disc;
+                  padding-left: 18px;
+                  line-height: 1.8;
+                "
+              >
+                <li>Full S3 access for backup bucket</li>
+                <li>KMS Decrypt/GenerateDataKey</li>
+                <li>KMS DescribeKey & CreateGrant</li>
+                <li>Glacier transition support</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card" style="margin-top: 16px; padding: 12px 22px">
+            <p class="muted" style="font-size: 13px">
+              <i class="fas fa-check-circle" style="color: var(--green)"></i>
+              <b>MFA Confirmed:</b> Root account MFA enabled &bull;
+              <b>KMS Key:</b> Customer Managed Key for S3 encryption &bull;
+              <b>Key Rotation:</b> Enabled (annual)
+            </p>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 11: IAM EVIDENCE ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo">
+          <i class="fas fa-camera"></i><span>IAM — EVIDENCE</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">IAM Policy & Role Policies</h2>
+          <div class="two" style="height: 400px">
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-key"></i> IAM Policy
+              </h3>
+              <img
+                src="images/iam_policy.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-user-shield"></i> Lambda Role Policy
+              </h3>
+              <img
+                src="images/role_policy_lambda.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 12: IAM EVIDENCE 2 ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo">
+          <i class="fas fa-camera"></i><span>IAM — EVIDENCE 2</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">Remediation & Backup Role Policies</h2>
+          <div class="two" style="height: 400px">
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-hard-hat"></i> Remediation Role
+              </h3>
+              <img
+                src="images/role_policy_remediation.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-archive"></i> Backup Role
+              </h3>
+              <img
+                src="images/role_policy_backup.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 13: KMS ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-key"></i><span>KMS ENCRYPTION</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Data-at-rest encryption</div>
+          <h2 class="section-title">Customer Managed Key (CMK)</h2>
+          <div class="two">
+            <div class="card">
+              <h3>
+                <i class="fas fa-shield-halved orange"></i> KMS Configuration
+              </h3>
+              <ul
+                class="muted list-disc pl-6 space-y-2"
+                style="font-size: 14px"
+              >
+                <li>
+                  <b>CMK ARN:</b> arn:aws:kms:us-east-1:...key/a5ef4d75-...
+                </li>
+                <li><b>Usage:</b> Encrypts objects in uploads bucket</li>
+                <li><b>Key Rotation:</b> Enabled (annual)</li>
+                <li><b>Principals:</b> Lambda Role & Backup Role</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-user-lock orange"></i> Key Policy</h3>
+              <ul
+                class="muted list-disc pl-6 space-y-2"
+                style="font-size: 14px"
+              >
+                <li><b>Root:</b> Full kms:* access</li>
+                <li>
+                  <b>Lambda Role:</b> Decrypt, GenerateDataKey, DescribeKey
+                </li>
+                <li>
+                  <b>Backup Role:</b> Decrypt, GenerateDataKey, DescribeKey,
+                  CreateGrant
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 14: KMS EVIDENCE ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo">
+          <i class="fas fa-camera"></i><span>KMS — EVIDENCE</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">KMS Key Policy & Key Material</h2>
+          <div class="two" style="height: 400px">
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-file-alt"></i> Key Policy
+              </h3>
+              <img
+                src="images/kms_policy_detail.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-cogs"></i> Key Material
+              </h3>
+              <img
+                src="images/kms_material_detail.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 15: LAMBDA CONFIG ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-bolt"></i><span>LAMBDA CONFIGURATION</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Serverless compute</div>
+          <h2 class="section-title">Lambda — Dual Function Architecture</h2>
+          <div class="two">
+            <div class="card">
+              <h3><i class="fas fa-server orange"></i> Backend API Lambda</h3>
+              <ul
+                class="muted list-disc pl-6 space-y-2"
+                style="font-size: 13px"
+              >
+                <li><b>Runtime:</b> Python 3.10, arm64</li>
+                <li><b>Memory:</b> 256 MB</li>
+                <li><b>Timeout:</b> 30s</li>
+                <li><b>VPC:</b> Private subnets, sg-lambda</li>
+                <li><b>Reserved Concurrency:</b> 5</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>
+                <i class="fas fa-microchip orange"></i> File Processor Lambda
+              </h3>
+              <ul
+                class="muted list-disc pl-6 space-y-2"
+                style="font-size: 13px"
+              >
+                <li><b>Trigger:</b> S3 Event (s3:ObjectCreated:*)</li>
+                <li><b>Processing:</b> PDF → local parsing first</li>
+                <li><b>Fallback:</b> Image/failed PDF → Textract OCR</li>
+                <li><b>Output:</b> Categorized transactions → DynamoDB</li>
+                <li><b>Log Retention:</b> 14 days</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card" style="margin-top: 16px; padding: 12px 22px">
+            <p class="muted" style="font-size: 13px">
+              <i class="fas fa-info-circle orange"></i>
+              <b>ENV Variables:</b> TABLE_NAME, BUCKET_NAME, BEDROCK_MODEL
+              &bull; <b>Package:</b> package.zip (45 MB) &bull;
+              <b>Deploy:</b> fast_deploy.py / deploy.ps1
+            </p>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 16: LAMBDA EVIDENCE ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo">
+          <i class="fas fa-camera"></i><span>LAMBDA — EVIDENCE</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">Lambda Console — Config, Env & VPC</h2>
+          <div class="three" style="height: 400px">
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-cog"></i> Config
+              </h3>
+              <img
+                src="images/lambda_config.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-terminal"></i> Env Vars
+              </h3>
+              <img
+                src="images/lambda_env.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-network-wired"></i> VPC
+              </h3>
+              <img
+                src="images/lambda_vpc.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 17: API GATEWAY ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-door-closed"></i><span>API GATEWAY</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Hardened ingress</div>
+          <h2 class="section-title">HTTP API v2 — Low-Latency Gateway</h2>
+          <div class="flow">
+            <div class="node">Client</div>
+            <div class="arrow">→</div>
+            <div class="node">CloudFront</div>
+            <div class="arrow">→</div>
+            <div class="node">API Gateway<br />HTTP API v2</div>
+            <div class="arrow">→</div>
+            <div class="node">Lambda<br />Backend</div>
+            <div class="arrow">→</div>
+            <div class="node">Bedrock /<br />DynamoDB</div>
+          </div>
+          <div class="three" style="margin-top: 28px">
+            <div class="card">
+              <h3><i class="fas fa-globe orange"></i> CORS</h3>
+              <p class="muted" style="font-size: 13px">
+                Chỉ cho phép từ CloudFront domain. Ngăn chặn cross-origin
+                request trái phép.
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-tachometer-alt orange"></i> Throttling</h3>
+              <p class="muted">
+                <span class="metric">10 rps</span><br />Burst tối đa 20
+                requests.
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-file-alt orange"></i> Logging</h3>
+              <p class="muted" style="font-size: 13px">
+                CloudWatch logging enabled. Stage: environment variable. IAM
+                role on Lambda protection.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 18: API GATEWAY EVIDENCE ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo">
+          <i class="fas fa-camera"></i><span>API GATEWAY — EVIDENCE</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">CORS, Routes & Throttling</h2>
+          <div class="three" style="height: 400px">
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-globe"></i> CORS
+              </h3>
+              <img
+                src="images/api_gateway_cors.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-route"></i> Routes
+              </h3>
+              <img
+                src="images/api_gateway_routes.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-tachometer-alt"></i> Throttling
+              </h3>
+              <img
+                src="images/api_gateway_throttling.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 19: CLOUDFRONT & S3 ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-cloud"></i><span>CLOUDFRONT & S3</span>
+        </div>
+        <div class="content">
+          <div class="kicker">CDN & Static hosting</div>
+          <h2 class="section-title">CloudFront OAC + S3 Static Website</h2>
+          <div class="two">
+            <div class="card">
+              <h3><i class="fas fa-globe orange"></i> CloudFront</h3>
+              <ul
+                class="muted list-disc pl-6 space-y-2"
+                style="font-size: 13px"
+              >
+                <li><b>Origin:</b> S3 bucket budgetbot-frontend</li>
+                <li><b>OAC:</b> Origin Access Control enabled</li>
+                <li><b>Cache:</b> Managed-CachingOptimized, TTL 0 (SPA)</li>
+                <li><b>Error Response:</b> 403/404 → /index.html</li>
+                <li><b>Protocol:</b> redirect-to-https</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-bucket orange"></i> S3 Buckets</h3>
+              <ul
+                class="muted list-disc pl-6 space-y-2"
+                style="font-size: 13px"
+              >
+                <li>
+                  <b>Uploads:</b> CMK encrypted, lifecycle IA @30d, expiry @90d
+                </li>
+                <li><b>Frontend:</b> Static site, OAC restricted</li>
+                <li><b>Public Access Block:</b> Enabled on both</li>
+                <li><b>Access Logs:</b> Stored in cloudfront-logs bucket</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 20: CLOUDFRONT EVIDENCE ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo">
+          <i class="fas fa-camera"></i><span>CLOUDFRONT — EVIDENCE</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">CloudFront Origins & Cache Behaviors</h2>
+          <div class="two" style="height: 400px">
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-server"></i> Origins
+              </h3>
+              <img
+                src="images/cloudfront_origins.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-cogs"></i> Behaviors
+              </h3>
+              <img
+                src="images/cloudfront_behaviors.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 21: DYNAMODB ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-database"></i><span>DYNAMODB</span>
+        </div>
+        <div class="content">
+          <div class="kicker">NoSQL database</div>
+          <h2 class="section-title">DynamoDB — Pay-per-Request</h2>
+          <div class="two">
+            <div class="card">
+              <h3><i class="fas fa-table orange"></i> Table Configuration</h3>
+              <ul
+                class="muted list-disc pl-6 space-y-2"
+                style="font-size: 14px"
+              >
+                <li><b>Table:</b> budgetbot-hackathon-transactions</li>
+                <li><b>Billing:</b> PAY_PER_REQUEST (scale-to-zero)</li>
+                <li><b>TTL:</b> Enabled on expire_at attribute</li>
+                <li><b>Streams:</b> NEW_AND_OLD_IMAGES</li>
+                <li><b>PITR:</b> Point-in-time recovery enabled</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-chart-bar orange"></i> Key Features</h3>
+              <ul
+                class="muted list-disc pl-6 space-y-2"
+                style="font-size: 14px"
+              >
+                <li>GSI indexes cho user_id + month queries</li>
+                <li>Automatic TTL cleanup stale items</li>
+                <li>Streams → EventBridge triggers</li>
+                <li>Backup via AWS Backup plan</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 22: DYNAMODB EVIDENCE ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo">
+          <i class="fas fa-camera"></i><span>DYNAMODB — EVIDENCE</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">DynamoDB Settings</h2>
+          <div class="two" style="height: 380px">
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-table"></i> Summary
+              </h3>
+              <img
+                src="images/dynamodb_summary.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-tachometer-alt"></i> Capacity
+              </h3>
+              <img
+                src="images/dynamodb_capacity.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 23: DYNAMODB EVIDENCE 2 ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo">
+          <i class="fas fa-camera"></i><span>DYNAMODB — EVIDENCE 2</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">TTL & DynamoDB Streams</h2>
+          <div class="two" style="height: 400px">
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-clock"></i> TTL Config
+              </h3>
+              <img
+                src="images/dynamodb_ttl.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-stream"></i> Streams
+              </h3>
+              <img
+                src="images/dynamodb_stream.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 24: BEDROCK & TEXTRACT ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-brain"></i><span>BEDROCK & TEXTRACT</span>
+        </div>
+        <div class="content">
+          <div class="kicker">AI/ML services</div>
+          <h2 class="section-title">Claude Haiku + Smart OCR Pipeline</h2>
+          <div class="two">
+            <div class="card">
+              <h3><i class="fas fa-robot orange"></i> Bedrock AI</h3>
+              <ul
+                class="muted list-disc pl-6 space-y-2"
+                style="font-size: 13px"
+              >
+                <li><b>Model:</b> Claude 4.5 Haiku</li>
+                <li><b>Endpoint:</b> VPC Interface Endpoint</li>
+                <li>
+                  <b>Use cases:</b> Transaction categorization, Financial
+                  coaching, Insight generation
+                </li>
+                <li><b>IAM:</b> Scoped ARN (anthropic.claude-*)</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>
+                <i class="fas fa-file-image orange"></i> Smart OCR Pipeline
+              </h3>
+              <ul
+                class="muted list-disc pl-6 space-y-2"
+                style="font-size: 13px"
+              >
+                <li>
+                  <b>PDF:</b> Local parsing first (PyPDF) → ~80% cost saving
+                </li>
+                <li>
+                  <b>Image/Failed PDF:</b> Fallback to Textract
+                  DetectDocumentText
+                </li>
+                <li><b>Endpoint:</b> VPC Interface Endpoint</li>
+                <li><b>Cap:</b> MAX_TEXTRACT_CALLS_PER_DAY configurable</li>
+              </ul>
+            </div>
+          </div>
+          <div class="flow" style="margin-top: 16px; justify-content: center">
+            <div class="node">Upload File</div>
+            <div class="arrow">→</div>
+            <div class="node" style="border-color: var(--green)">
+              Check<br />File Type
+            </div>
+            <div class="arrow">→</div>
+            <div class="node">PDF?<br />Local Parse</div>
+            <div class="arrow">→</div>
+            <div class="node">Image?<br />Textract</div>
+            <div class="arrow">→</div>
+            <div class="node" style="border-color: var(--aws)">
+              Bedrock<br />Categorize
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 25: EVENTBRIDGE SELF-HEALING ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-shield-halved"></i><span>SELF-HEALING SECURITY</span>
+        </div>
+        <div class="content">
+          <div class="kicker">EventBridge auto-remediation</div>
+          <h2 class="section-title">S3 Public Access Block — Tự phục hồi</h2>
+          <div class="flow">
+            <div class="node" style="border-color: #ef5350">
+              Attacker<br />Disable PAB
+            </div>
+            <div class="arrow">→</div>
+            <div class="node">CloudTrail<br />Event</div>
+            <div class="arrow">→</div>
+            <div class="node" style="border-color: var(--aws)">
+              EventBridge<br />Rule
+            </div>
+            <div class="arrow">→</div>
+            <div class="node" style="border-color: var(--green)">
+              Remediation<br />Lambda
+            </div>
+            <div class="arrow">→</div>
+            <div class="node" style="border-color: var(--green)">
+              Re-enable<br />PAB ✓
+            </div>
+          </div>
+          <div class="two" style="margin-top: 20px">
+            <div class="code" style="font-size: 12px">
+              # Remediation Lambda def handler(event, context): bucket =
+              event['detail'] ['requestParameters']['bucketName']
+              s3.put_public_access_block( Bucket=bucket,
+              PublicAccessBlockConfiguration={ 'BlockPublicAcls': True,
+              'IgnorePublicAcls': True, 'BlockPublicPolicy': True,
+              'RestrictPublicBuckets': True } )
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-bolt orange"></i> Kịch bản</h3>
+              <ul
+                class="muted list-disc pl-6 space-y-2"
+                style="font-size: 13px"
+              >
+                <li>Kẻ tấn công tắt Public Access Block trên S3</li>
+                <li>CloudTrail ghi nhận DeletePublicAccessBlock</li>
+                <li>EventBridge Rule match event pattern</li>
+                <li>Lambda tự động khôi phục PAB trong vài giây</li>
+                <li><b>Result:</b> Zero-downtime security restoration</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 26: EVENTBRIDGE EVIDENCE ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo">
+          <i class="fas fa-camera"></i><span>EVENTBRIDGE — EVIDENCE</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">EventBridge Rule & Target Lambda</h2>
+          <div class="two" style="height: 400px">
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-bullseye"></i> EventBridge Rule
+              </h3>
+              <img
+                src="images/eventbridge.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-crosshairs"></i> Target Lambda
+              </h3>
+              <img
+                src="images/eventbridge_target.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 27: BUDGET & ALARMS ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-dollar-sign"></i><span>BUDGET & ALARMS</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Cost management</div>
+          <h2 class="section-title">Budget Alarms & Cost Anomaly Detection</h2>
+          <div class="two">
+            <div class="card">
+              <h3><i class="fas fa-wallet orange"></i> Budget Configuration</h3>
+              <ul
+                class="muted list-disc pl-6 space-y-3"
+                style="font-size: 14px"
+              >
+                <li>
+                  <b>Monthly Budget:</b>
+                  <span class="metric" style="font-size: 28px">$10</span>
+                </li>
+                <li><b>Alarm:</b> 80% triggers SNS email notification</li>
+                <li>
+                  <b>Cost Anomaly Detection:</b> Enabled across all services
+                </li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-bell orange"></i> Monitoring Alarms</h3>
+              <ul
+                class="muted list-disc pl-6 space-y-3"
+                style="font-size: 14px"
+              >
+                <li><b>Lambda Errors:</b> Metric Alarm when error > 0 → SNS</li>
+                <li><b>CloudWatch Logs:</b> Retention 14 days</li>
+                <li><b>Dashboard:</b> Lambda, API Gateway & cost metrics</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 28: BUDGET EVIDENCE ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo">
+          <i class="fas fa-camera"></i><span>BUDGET — EVIDENCE</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">AWS Budget Console</h2>
+          <div class="flex justify-center" style="height: 420px">
+            <img
+              src="images/budget_100usd.png"
+              class="img-evidence"
+              style="max-height: 100%; max-width: 80%; height: 100%"
+            />
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 29: COST BREAKDOWN ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-chart-pie"></i><span>COST BREAKDOWN</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Feature cost analysis</div>
+          <h2 class="section-title">
+            Estimated Monthly Cost — <span class="orange">$5.62</span>
+          </h2>
+          <table class="table" style="font-size: 13px; border-spacing: 0 6px">
+            <tr>
+              <th style="padding: 8px 12px">Feature</th>
+              <th style="padding: 8px 12px">AWS Service</th>
+              <th style="padding: 8px 12px">Cost Component</th>
+              <th style="padding: 8px 12px; text-align: right">
+                Monthly (USD)
+              </th>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px">AI Categorization</td>
+              <td style="padding: 8px 12px">Bedrock (Claude Haiku)</td>
+              <td style="padding: 8px 12px">~2M tokens/month</td>
+              <td style="padding: 8px 12px; text-align: right"><b>$0.50</b></td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px">OCR Extraction</td>
+              <td style="padding: 8px 12px">Textract</td>
+              <td style="padding: 8px 12px">~5k API calls</td>
+              <td style="padding: 8px 12px; text-align: right"><b>$0.10</b></td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px">Upload Storage</td>
+              <td style="padding: 8px 12px">S3</td>
+              <td style="padding: 8px 12px">~2 GB + requests</td>
+              <td style="padding: 8px 12px; text-align: right"><b>$0.07</b></td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px">Encryption</td>
+              <td style="padding: 8px 12px">KMS CMK</td>
+              <td style="padding: 8px 12px">~5k API calls</td>
+              <td style="padding: 8px 12px; text-align: right"><b>$0.05</b></td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px">Private Connectivity</td>
+              <td style="padding: 8px 12px">VPC Endpoints</td>
+              <td style="padding: 8px 12px">~720h hourly fee</td>
+              <td style="padding: 8px 12px; text-align: right"><b>$3.60</b></td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px">Compute</td>
+              <td style="padding: 8px 12px">Lambda (arm64)</td>
+              <td style="padding: 8px 12px">1M GB-s + 2M req</td>
+              <td style="padding: 8px 12px; text-align: right"><b>$0.30</b></td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px">Database</td>
+              <td style="padding: 8px 12px">DynamoDB</td>
+              <td style="padding: 8px 12px">~100k R/W ops</td>
+              <td style="padding: 8px 12px; text-align: right"><b>$0.15</b></td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px">CDN</td>
+              <td style="padding: 8px 12px">CloudFront</td>
+              <td style="padding: 8px 12px">~10 GB transfer</td>
+              <td style="padding: 8px 12px; text-align: right"><b>$0.85</b></td>
+            </tr>
+          </table>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 30: COST OPTIMIZATION ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-piggy-bank"></i><span>COST OPTIMIZATION</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Savings strategies</div>
+          <h2 class="section-title">Chiến lược tối ưu chi phí</h2>
+          <div class="three">
+            <div class="card">
+              <h3><i class="fas fa-bolt orange"></i> Lambda</h3>
+              <p class="muted" style="font-size: 12px">
+                Smallest memory meeting latency. Provisioned concurrency chỉ khi
+                cần. Timeout sát expected max.
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-database orange"></i> DynamoDB</h3>
+              <p class="muted" style="font-size: 12px">
+                PAY_PER_REQUEST tránh over-provisioning. TTL auto-expire stale
+                items.
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-bucket orange"></i> S3</h3>
+              <p class="muted" style="font-size: 12px">
+                Lifecycle rules: IA @30d, delete @90d. OAC giảm extra S3 request
+                costs.
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-plug orange"></i> VPC Endpoints</h3>
+              <p class="muted" style="font-size: 12px">
+                Chỉ dùng cho required services (Bedrock, Textract). Delete
+                unused endpoints.
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-eye orange"></i> Textract</h3>
+              <p class="muted" style="font-size: 12px">
+                Local PDF parsing first → giảm ~80% Textract calls. Cap
+                MAX_TEXTRACT_CALLS_PER_DAY.
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-bell orange"></i> Budget Alerts</h3>
+              <p class="muted" style="font-size: 12px">
+                Alerts at 50% & 80% thresholds. Cost Anomaly Detection spot
+                spikes early.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 31: BACKUP ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-archive"></i><span>BACKUP & RECOVERY</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Data durability</div>
+          <h2 class="section-title">AWS Backup Plan — S3 Uploads</h2>
+          <div class="two">
+            <div class="card">
+              <h3>
+                <i class="fas fa-shield-halved orange"></i> Backup Configuration
+              </h3>
+              <ul
+                class="muted list-disc pl-6 space-y-3"
+                style="font-size: 14px"
+              >
+                <li><b>Target:</b> S3 uploads bucket</li>
+                <li><b>Transition:</b> Glacier after 30 days</li>
+                <li><b>Retention:</b> 35 days recovery points</li>
+                <li><b>KMS:</b> Encrypted with CMK</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>
+                <i class="fas fa-history orange"></i> Additional Protections
+              </h3>
+              <ul
+                class="muted list-disc pl-6 space-y-3"
+                style="font-size: 14px"
+              >
+                <li><b>DynamoDB PITR:</b> Point-in-time recovery enabled</li>
+                <li><b>S3 Lifecycle:</b> Intelligent-Tiered Access @30d</li>
+                <li><b>CloudFront Logs:</b> Stored in separate bucket</li>
+                <li><b>Lambda Logs:</b> CloudWatch 14-day retention</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <!-- ============ SLIDE 33: CLOSING ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fab fa-aws"></i><span>BUDGETBOT — AI MONEY COACH</span>
+        </div>
+        <div class="accent-bar"></div>
+        <div class="content" style="top: 170px">
+          <h1 class="title" style="font-size: 54px">
+            Thank You!<br /><span>Questions?</span>
+          </h1>
+          <p class="subtitle" style="margin-top: 24px">
+            BudgetBot — AI Money Coach for Personal Finance
+          </p>
+          <div class="flow" style="margin-top: 40px">
+            <span class="pill"
+              ><i class="fas fa-globe"></i> d39sr1v8scwccx.cloudfront.net</span
+            >
+            <span class="pill"
+              ><i class="fab fa-github"></i> PTienhocSE/budgetbot-aws</span
+            >
+            <span class="pill"><i class="fas fa-users"></i> Group G13</span>
+          </div>
+          <div class="card" style="margin-top: 32px; padding: 16px 22px">
+            <div
+              class="flow"
+              style="
+                margin-top: 0;
+                justify-content: space-around;
+                flex-wrap: wrap;
+                gap: 10px;
+              "
+            >
+              <div style="text-align: center">
+                <span class="metric" style="font-size: 24px; color: var(--aws)"
+                  >$5.62</span
+                ><br /><span class="muted" style="font-size: 12px"
+                  >Monthly Cost</span
+                >
+              </div>
+              <div style="text-align: center">
+                <span
+                  class="metric"
+                  style="font-size: 24px; color: var(--green)"
+                  >7</span
+                ><br /><span class="muted" style="font-size: 12px"
+                  >AWS Services</span
+                >
+              </div>
+              <div style="text-align: center">
+                <span class="metric" style="font-size: 24px; color: var(--blue)"
+                  >100%</span
+                ><br /><span class="muted" style="font-size: 12px"
+                  >Serverless</span
+                >
+              </div>
+              <div style="text-align: center">
+                <span class="metric" style="font-size: 24px; color: #ef5350"
+                  >0</span
+                ><br /><span class="muted" style="font-size: 12px"
+                  >NAT Gateway</span
+                >
+              </div>
+              <div style="text-align: center">
+                <span class="metric" style="font-size: 24px; color: var(--aws)"
+                  >Auto</span
+                ><br /><span class="muted" style="font-size: 12px"
+                  >Self-Healing</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+    </div>
+
+    <script>
+      let currentSlide = 0;
+      const slides = document.querySelectorAll(".slide-container");
+      const totalSlides = slides.length;
+
+      // Presenter name per slide (0-indexed)
+      const presenters = [
+        "Trần Phúc Tiến", // 0  Cover
+        "Trần Phúc Tiến", // 1  Team
+        "Trần Phúc Tiến", // 2  Backend Task Assignment
+        "Trần Phúc Tiến", // 3  Domain & Use Case
+        "Võ Hồng Đức", // 4  Architecture (Diagram Design)
+        "Trần Phúc Tiến", // 5  Processing Flow (Async S3 Processing)
+        "Trần Phúc Tiến", // 6  Trade-offs
+        "Bùi Thị Thùy Trang", // 7  VPC & Network (Terraform IaC)
+        "Bùi Thị Thùy Trang", // 8  VPC Evidence
+        "Bùi Thị Thùy Trang", // 9  VPC Flow Logs
+        "Bùi Thị Thùy Trang", // 10 IAM & Security (Terraform IAM Roles)
+        "Bùi Thị Thùy Trang", // 11 IAM Evidence
+        "Bùi Thị Thùy Trang", // 12 IAM Evidence 2
+        "Bùi Thị Thùy Trang", // 13 KMS (KMS Encryption)
+        "Bùi Thị Thùy Trang", // 14 KMS Evidence
+        "Nguyễn Ngọc Giao", // 15 Lambda Config (FastAPI Routers, Mangum)
+        "Nguyễn Ngọc Giao", // 16 Lambda Evidence
+        "Bùi Thị Thùy Trang", // 17 API Gateway (Terraform IaC)
+        "Bùi Thị Thùy Trang", // 18 API Gateway Evidence
+        "Bùi Thị Thùy Trang", // 19 CloudFront & S3 (Terraform IaC)
+        "Bùi Thị Thùy Trang", // 20 CloudFront Evidence
+        "Nguyễn Tấn Huy", // 21 DynamoDB (Schema Design PK/SK/GSI)
+        "Nguyễn Tấn Huy", // 22 DynamoDB Evidence
+        "Nguyễn Tấn Huy", // 23 DynamoDB Evidence 2
+        "Trần Quốc Kiệt", // 24 Bedrock & Textract (Converse API, Tool-Calling)
+        "Võ Hồng Đức", // 25 EventBridge Self-Healing (S3 Remediation Lambda)
+        "Võ Hồng Đức", // 26 EventBridge Evidence
+        "Nguyễn Quách Khang Ninh", // 27 Budget & Alarms (CloudWatch, AWS Budgets)
+        "Nguyễn Quách Khang Ninh", // 28 Budget Evidence
+        "Nguyễn Quách Khang Ninh", // 29 Cost Breakdown (Cost Guard)
+        "Nguyễn Quách Khang Ninh", // 30 Cost Optimization
+        "Nguyễn Tấn Huy", // 31 Backup & Recovery (Backup Plan)
+        "Trần Phúc Tiến", // 32 Closing
+      ];
+
+      function updateSlides() {
+        slides.forEach((slide, index) => {
+          // Slide number
+          let noEl = slide.querySelector(".slide-no");
+          if (noEl)
+            noEl.innerText =
+              String(index + 1).padStart(2, "0") + " / " + totalSlides;
+
+          // // Presenter tag
+          // let presEl = slide.querySelector('.presenter');
+          // if (!presEl) {
+          //   presEl = document.createElement('div');
+          //   presEl.className = 'presenter';
+          //   slide.appendChild(presEl);
+          // }
+          // const name = presenters[index] || '';
+          // presEl.innerHTML = '<i class="fas fa-microphone"></i> ' + name;
+
+          if (document.body.classList.contains("presentation-mode")) {
+            if (index === currentSlide) {
+              slide.classList.add("active");
+            } else {
+              slide.classList.remove("active");
+            }
+          } else {
+            slide.classList.remove("active");
+          }
+        });
+      }
+
+      function toggleFullScreen() {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch((err) => {
+            console.log(
+              `Error attempting to enable full-screen mode: ${err.message}`,
+            );
+          });
+          document.body.classList.add("presentation-mode");
+        } else {
+          if (document.exitFullscreen) {
+            document.exitFullscreen();
+          }
+          document.body.classList.remove("presentation-mode");
+        }
+        setTimeout(updateScale, 100);
+      }
+
+      document.addEventListener("fullscreenchange", () => {
+        if (!document.fullscreenElement) {
+          document.body.classList.remove("presentation-mode");
+          slides.forEach((s) => (s.style.transform = ""));
+        } else {
+          document.body.classList.add("presentation-mode");
+        }
+        updateSlides();
+        updateScale();
+      });
+
+      function updateScale() {
+        if (document.body.classList.contains("presentation-mode")) {
+          const scale = Math.min(
+            window.innerWidth / 1280,
+            window.innerHeight / 720,
+          );
+          slides.forEach((slide) => {
+            slide.style.setProperty("--scale", scale);
+          });
+        } else {
+          slides.forEach((slide) => {
+            slide.style.removeProperty("--scale");
+          });
+        }
+      }
+
+      window.addEventListener("resize", updateScale);
+
+      document.getElementById("prevBtn").addEventListener("click", () => {
+        if (currentSlide > 0) {
+          currentSlide--;
+          updateSlides();
+          if (!document.body.classList.contains("presentation-mode")) {
+            slides[currentSlide].scrollIntoView({ behavior: "smooth" });
+          }
+        }
+      });
+
+      document.getElementById("nextBtn").addEventListener("click", () => {
+        if (currentSlide < totalSlides - 1) {
+          currentSlide++;
+          updateSlides();
+          if (!document.body.classList.contains("presentation-mode")) {
+            slides[currentSlide].scrollIntoView({ behavior: "smooth" });
+          }
+        }
+      });
+
+      document
+        .getElementById("fsBtn")
+        .addEventListener("click", toggleFullScreen);
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === " ") {
+          document.getElementById("nextBtn").click();
+        } else if (e.key === "ArrowLeft") {
+          document.getElementById("prevBtn").click();
+        } else if (e.key === "f") {
+          toggleFullScreen();
+        }
+      });
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (
+              entry.isIntersecting &&
+              !document.body.classList.contains("presentation-mode")
+            ) {
+              currentSlide = Array.from(slides).indexOf(entry.target);
+            }
+          });
+        },
+        { threshold: 0.5 },
+      );
+
+      slides.forEach((slide) => observer.observe(slide));
+      updateSlides();
+    </script>
+  </body>
+</html>
