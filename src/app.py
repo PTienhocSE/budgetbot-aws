@@ -62,6 +62,9 @@ class TransactionUpdateRequest(BaseModel):
     amount: Optional[float] = None
     category: Optional[str] = None
 
+class TransactionBatchRequest(BaseModel):
+    transactions: list[TransactionRequest]
+
 
 class CapRequest(BaseModel):
     category: str
@@ -186,6 +189,27 @@ def create_transaction(
     }
     userstore.add_transaction(user_id, txn)
     return {"status": "created", "transaction": txn}
+
+
+@app.post("/transactions/batch")
+def create_transaction_batch(
+    req: TransactionBatchRequest,
+    user_id: str = Depends(get_current_user),
+) -> dict:
+    """Manually add multiple transactions at once (e.g. from manual review)."""
+    inserted = 0
+    for t_req in req.transactions:
+        # We don't auto-categorize again here, we trust the client's category
+        txn = {
+            "date": t_req.date,
+            "description": t_req.description,
+            "amount": t_req.amount,
+            "category": t_req.category,
+            "confidence": "high",  # Since it's user-confirmed, confidence is high
+        }
+        userstore.add_transaction(user_id, txn)
+        inserted += 1
+    return {"status": "created", "count": inserted}
 
 
 @app.put("/transactions/{transaction_id}")

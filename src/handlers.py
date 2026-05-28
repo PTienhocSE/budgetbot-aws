@@ -48,6 +48,7 @@ def handle_upload(
     
     inserted = 0
     samples = []
+    needs_review = []
     parsed_count = 0
     
     if filename.lower().endswith((".pdf", ".png", ".jpg", ".jpeg")):
@@ -89,10 +90,13 @@ def handle_upload(
             else:
                 txn["amount"] = -abs(txn["amount"])
                 
-            userstore.add_transaction(user_id, txn)
-            inserted += 1
-            if len(samples) < 5:
-                samples.append(txn)
+            if txn.get("confidence") == "high":
+                userstore.add_transaction(user_id, txn)
+                inserted += 1
+                if len(samples) < 5:
+                    samples.append(txn)
+            else:
+                needs_review.append(txn)
     else:
         rows = _parse_csv(data)
         parsed_count = len(rows)
@@ -112,10 +116,13 @@ def handle_upload(
             else:
                 txn["amount"] = -abs(txn["amount"])
                 
-            userstore.add_transaction(user_id, txn)
-            inserted += 1
-            if len(samples) < 5:
-                samples.append(txn)
+            if txn.get("confidence") == "high":
+                userstore.add_transaction(user_id, txn)
+                inserted += 1
+                if len(samples) < 5:
+                    samples.append(txn)
+            else:
+                needs_review.append(txn)
 
     return {
         "filename": filename,
@@ -123,6 +130,7 @@ def handle_upload(
         "rows_parsed": parsed_count,
         "rows_inserted": inserted,
         "sample_categorized": samples,
+        "needs_review": needs_review,
     }
 
 
