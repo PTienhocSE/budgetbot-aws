@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import { formatCurrency } from '../utils/format';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useUpload } from '../context/UploadContext';
 
 function Overview() {
   const [file, setFile] = useState(null);
@@ -10,7 +11,7 @@ function Overview() {
   const [summaryData, setSummaryData] = useState(null);
   const [month, setMonth] = useState('');
   const [transactions, setTransactions] = useState([]);
-  const [reviewTransactions, setReviewTransactions] = useState([]);
+  const { submitUpload, activeJobCount } = useUpload();
 
   // Fetch summary and transactions
   const fetchData = async () => {
@@ -35,24 +36,12 @@ function Overview() {
 
   const handleUpload = async (f) => {
     if (!f) return;
-    setUploadMsg('Uploading & Categorizing...');
-    const fd = new FormData();
-    fd.append('file', f);
+    setUploadMsg('Uploading...');
     try {
-      const res = await apiClient.post('/upload', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      
-      const needsReview = res.data.needs_review || [];
-      if (needsReview.length > 0) {
-        setUploadMsg(`Success! ${res.data.rows_inserted} transactions stored. ${needsReview.length} need manual review.`);
-        setReviewTransactions(needsReview);
-      } else {
-        setUploadMsg(`Success! ${res.data.rows_inserted} transactions categorized and stored.`);
-      }
-      fetchData();
+      const result = await submitUpload(f);
+      setUploadMsg(`✅ File "${result.filename}" uploaded! Processing in background — you can navigate to other pages. A notification will appear when done.`);
     } catch (err) {
-      setUploadMsg('Upload failed: ' + (err.response?.data?.detail || err.message));
+      setUploadMsg('❌ Upload failed: ' + (err.response?.data?.detail || err.message));
     }
   };
 
@@ -76,70 +65,8 @@ function Overview() {
     }
   };
 
-  const handleReviewSave = async () => {
-    try {
-      setUploadMsg('Saving reviewed transactions...');
-      await apiClient.post('/transactions/batch', { transactions: reviewTransactions });
-      setUploadMsg(`Saved ${reviewTransactions.length} reviewed transactions successfully.`);
-      setReviewTransactions([]);
-      fetchData();
-    } catch (err) {
-      setUploadMsg('Batch save failed: ' + (err.response?.data?.detail || err.message));
-    }
-  };
-
-  const handleReviewCategoryChange = (index, newCat) => {
-    const updated = [...reviewTransactions];
-    updated[index].category = newCat;
-    setReviewTransactions(updated);
-  };
-
   return (
     <div>
-      {/* REVIEW MODAL */}
-      {reviewTransactions.length > 0 && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-          <div className="card" style={{ width: '90%', maxWidth: '700px', maxHeight: '80vh', overflowY: 'auto' }}>
-            <h3 style={{marginTop: 0, color: 'var(--error)'}}>
-              <i className="fa-solid fa-triangle-exclamation"></i> Manual Review Required
-            </h3>
-            <p style={{color: 'var(--text-muted)'}}>
-              The AI was not confident about the following {reviewTransactions.length} transaction(s). 
-              Please confirm or update their categories before saving.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-              {reviewTransactions.map((txn, i) => (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 150px', gap: '1rem', background: 'rgba(255,255,255,0.5)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.1)', alignItems: 'center' }}>
-                  <div>
-                    <div style={{fontWeight: 'bold'}}>{txn.description}</div>
-                    <div style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>{txn.date}</div>
-                  </div>
-                  <div style={{fontWeight: 'bold', color: txn.amount >= 0 ? 'var(--success)' : 'var(--error)'}}>
-                    {txn.amount >= 0 ? '+' : ''}{formatCurrency(Math.abs(txn.amount))}
-                  </div>
-                  <select 
-                    value={txn.category} 
-                    onChange={(e) => handleReviewCategoryChange(i, e.target.value)}
-                    style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
-                  >
-                    {['Food', 'Transport', 'Shopping', 'Utilities', 'Entertainment', 'Health', 'Subscriptions', 'Income', 'Transfer', 'Other'].map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-              <button className="btn-outline" onClick={() => setReviewTransactions([])} style={{ borderColor: '#94a3b8', color: '#64748b' }}>Cancel All</button>
-              <button style={{marginTop:'0'}} className="btn-primary" onClick={handleReviewSave}>Confirm & Save All</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* UPLOAD SECTION */}
       <div className="card">

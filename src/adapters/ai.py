@@ -5,8 +5,11 @@ Interface:
 """
 import datetime
 import json
+import logging
 import re
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 CATEGORIES = [
@@ -128,10 +131,10 @@ class BedrockAI:
             pass
         return []
 
-    def chat(self, user_id: str, message: str, userstore) -> str:
+    def chat(self, user_id: str, message: str, userstore, history: list[dict] = None) -> str:
         from datetime import datetime, timezone
         current_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-        prompt = f"""You are BudgetBot, a helpful AI financial coach. Today is {current_date}.
+        system_prompt = f"""You are BudgetBot, a helpful AI financial coach. Today is {current_date}.
     Always answer in the same language as the user.
     You can use tools to fetch the user's spending summary or specific transactions.
     Always use tools if the user asks about spending, income, last month's totals, category breakdowns, or trends.
@@ -139,6 +142,7 @@ class BedrockAI:
     If the user asks about a specific category such as food, transport, shopping, utilities, health, subscriptions, or entertainment:
     - call get_transactions with the matching category and month if present
     - sum the returned transaction amounts before answering
+    - list out the detailed transaction line-items (date, description, amount formatted in VND) in a clear bulleted list
     - do not answer with the top category or the overall total unless the user asked for it
     If the user asks about trends across 3 months:
     - fetch each of the last 3 months separately using get_spending_summary
@@ -190,7 +194,21 @@ class BedrockAI:
             ]
         }
 
-        messages = [{"role": "user", "content": [{"text": f"<system>{prompt}</system>\nUser question: {message}"}]}]
+        messages = []
+        if history:
+            for msg in history[-10:]:
+                role = msg.get("role")
+                content = msg.get("content")
+                if role in ("user", "assistant") and content:
+                    messages.append({
+                        "role": role,
+                        "content": [{"text": str(content)}]
+                    })
+
+        messages.append({
+            "role": "user",
+            "content": [{"text": message}]
+        })
         
         max_loops = 3
         loops = 0
@@ -199,6 +217,7 @@ class BedrockAI:
             resp = self.runtime.converse(
                 modelId=self.model_id,
                 messages=messages,
+                system=[{"text": system_prompt}],
                 toolConfig=tool_config,
                 inferenceConfig={"maxTokens": 2000, "temperature": 0.7},
             )
@@ -267,16 +286,18 @@ class HybridAI:
             logger.error(f"Primary AI failed: {e}. Falling back.")
             return {"category": "Other", "confidence": "low", "engine": "fallback"}
 
-    def chat(self, user_id: str, message: str, userstore) -> str:
+    def chat(self, user_id: str, message: str, userstore, history: list[dict] = None) -> str:
         try:
-            return self.primary.chat(user_id, message, userstore)
-        except Exception:
-            return self.fallback.chat(user_id, message, userstore)
+            return self.primary.chat(user_id, message, userstore, history=history)
+        except Exception as e:
+            logger.exception(f"Primary AI chat failed: {e}")
+            return self.fallback.chat(user_id, message, userstore, history=history)
 
     def extract_transactions_from_text(self, text: str) -> list:
         try:
             return self.primary.extract_transactions_from_text(text)
-        except Exception:
+        except Exception as e:
+            logger.exception(f"Primary AI extract_transactions_from_text failed: {e}")
             return self.fallback.extract_transactions_from_text(text)
 
 
@@ -323,16 +344,44 @@ class LocalAI:
         # Fallback LocalAI cannot extract transactions from raw text reliably
         return []
 
-    def chat(self, user_id: str, message: str, userstore) -> str:
+    def chat(self, user_id: str, message: str, userstore, history: list[dict] = None) -> str:
         msg = message.lower()
         import re
+
+        # Handle the /coach prompt which expects a JSON object with insights and suggested_caps
+        if "financial data" in msg or "spending summary" in msg or msg.startswith("analyze"):
+            return """{
+              "insights": [
+                {"title": "Quản lý Tốt", "description": "Bạn đang quản lý chi tiêu rất hiệu quả ở chế độ Local AI.", "type": "positive", "actionable_steps": ["Hãy tiếp tục duy trì thói quen ghi chép chi tiêu."]},
+                {"title": "Cảnh báo Nhỏ", "description": "Lưu ý một số danh mục chi tiêu có thể đang tăng lên.", "type": "warning", "actionable_steps": ["Xem lại danh mục Food nếu vượt quá ngân sách."]},
+                {"title": "Mẹo Tiết kiệm", "description": "Thử thiết lập tính năng Cảnh báo (Caps & Alerts) để ngân sách không bao giờ bị vượt ngưỡng.", "type": "neutral", "actionable_steps": ["Vào phần Caps & Alerts để thiết lập hạn mức."]}
+              ],
+              "suggested_caps": [
+                {"category": "Food", "suggested_cap": 2000000, "reason": "Dựa trên chi tiêu Food tháng trước, đặt hạn mức 2M sẽ giúp bạn tiết kiệm."}
+              ]
+            }"""
 
         def _previous_month() -> str:
             today = datetime.date.today().replace(day=1)
             last_day_previous_month = today - datetime.timedelta(days=1)
             return last_day_previous_month.strftime("%Y-%m")
 
-        month = _previous_month() if ("tháng trước" in msg or "last month" in msg or "previous month" in msg) else None
+        def _current_month() -> str:
+            return datetime.date.today().strftime("%Y-%m")
+
+        if any(kw in msg for kw in ("tháng trước", "last month", "previous month")):
+            month = _previous_month()
+        elif any(kw in msg for kw in ("tháng này", "this month", "current month")):
+            month = _current_month()
+        else:
+            month = None
+
+        if month == _previous_month():
+            period_text = "tháng trước"
+        elif month == _current_month():
+            period_text = "tháng này"
+        else:
+            period_text = "toàn bộ dữ liệu"
 
         expense_keywords = (
             "spending",
@@ -357,9 +406,9 @@ class LocalAI:
 
         def _extract_category() -> str | None:
             category_map = [
-                ("Food", ("ăn uống", "an uong", "food", "ăn", "uong", "thực phẩm", "an uong")),
+                ("Food", ("ăn uống", "an uong", "food", "ăn", "uong", "thực phẩm")),
                 ("Transport", ("di chuyển", "transport", "xe", "grab", "taxi", "bus", "metro")),
-                ("Shopping", ("mua sắm", "shopping", "shopping", "shop", "shopee", "lazada", "tiki")),
+                ("Shopping", ("mua sắm", "shopping", "shop", "shopee", "lazada", "tiki")),
                 ("Utilities", ("hóa đơn", "utilities", "điện", "nước", "internet", "evn", "fpt", "vnpt")),
                 ("Entertainment", ("giải trí", "entertainment", "movie", "cinema", "game", "concert")),
                 ("Health", ("sức khỏe", "health", "bệnh viện", "pharmacy", "clinic", "thuốc")),
@@ -379,16 +428,8 @@ class LocalAI:
             if income_total <= 0:
                 return "Mình chưa thấy khoản thu nhập nào trong dữ liệu hiện tại."
 
-            period_text = "tháng trước" if month else "toàn bộ dữ liệu"
-            return f"Thu nhập của bạn trong {period_text} là {income_total:,.0f}đ."
-        
-        # Handle the /coach prompt which expects JSON
-        if msg.startswith("analyze the following spending summary"):
-            return """[
-              {"title": "Quản lý Tốt", "description": "Bạn đang quản lý chi tiêu rất hiệu quả ở chế độ Local AI. Để có lời khuyên sâu sắc hơn, hãy kết nối AWS Bedrock.", "type": "positive"},
-              {"title": "Cảnh báo Nhỏ", "description": "Lưu ý một số danh mục chi tiêu có thể đang tăng lên. Hãy theo dõi kỹ nhé.", "type": "warning"},
-              {"title": "Mẹo Tiết kiệm", "description": "Thử thiết lập tính năng Cảnh báo (Caps & Alerts) để ngân sách không bao giờ bị vượt ngưỡng.", "type": "neutral"}
-            ]"""
+            formatted_income = f"{income_total:,.0f}".replace(",", ".")
+            return f"Thu nhập của bạn trong {period_text} là {formatted_income}đ."
             
         if any(keyword in msg for keyword in expense_keywords):
             summary = userstore.summary(user_id, month=month)
@@ -398,9 +439,21 @@ class LocalAI:
             target_category = _extract_category()
             if target_category:
                 category_total = float(summary.get(target_category, {}).get("total", 0.0))
-                period_text = "tháng trước" if month else "toàn bộ dữ liệu"
                 if category_total < 0:
-                    return f"Dựa trên **{period_text}**, chi tiêu cho **{target_category.lower()}** của bạn là **{-category_total:,.0f}đ**."
+                    all_txns = userstore.list_transactions(user_id, month=month)
+                    txns = [t for t in all_txns if t.get("category", "").lower() == target_category.lower()]
+                    txn_lines = []
+                    for t in txns:
+                        amt = float(t.get("amount", 0))
+                        formatted_amt = f"{abs(amt):,.0f}".replace(",", ".")
+                        txn_lines.append(f"- **{t.get('date')}**: {formatted_amt}đ - {t.get('description')}")
+                    
+                    lines_str = "\n".join(txn_lines)
+                    formatted_category_total = f"{-category_total:,.0f}".replace(",", ".")
+                    return (
+                        f"Dựa trên **{period_text}**, chi tiêu cho **{target_category.lower()}** của bạn là **{formatted_category_total}đ**.\n\n"
+                        f"Chi tiết các giao dịch:\n{lines_str}"
+                    )
                 return f"Dựa trên **{period_text}**, mình chưa thấy khoản chi tiêu nào trong danh mục **{target_category.lower()}**."
             
             expenses = {k: v['total'] for k, v in summary.items() if v['total'] < 0}
@@ -410,8 +463,10 @@ class LocalAI:
             top_cat = min(expenses, key=expenses.get)
             total_expense = sum(expenses.values())
 
-            period_text = "tháng trước" if month else "dữ liệu hiện tại"
-            return f"Dựa trên **{period_text}**, tổng chi tiêu của bạn là **{-total_expense:,.0f}đ**. Bạn đang tiêu tốn nhiều tiền nhất vào danh mục **{top_cat}** với **{-expenses[top_cat]:,.0f}đ**. Bạn có muốn mình phân tích chi tiết hơn không?"
+            formatted_total_expense = f"{-total_expense:,.0f}".replace(",", ".")
+            formatted_top_cat = f"{-expenses[top_cat]:,.0f}".replace(",", ".")
+            period_text_expense = "dữ liệu hiện tại" if period_text == "toàn bộ dữ liệu" else period_text
+            return f"Dựa trên **{period_text_expense}**, tổng chi tiêu của bạn là **{formatted_total_expense}đ**. Bạn đang tiêu tốn nhiều tiền nhất vào danh mục **{top_cat}** với **{formatted_top_cat}đ**. Bạn có muốn mình phân tích chi tiết hơn không?"
             
         elif re.search(r"\b(hi|hello|chào|xin chào)\b", msg):
             return "Xin chào! Mình là BudgetBot AI 🤖. Mình có thể giúp bạn xem thống kê chi tiêu nhanh chóng. Bạn muốn hỏi gì nào?"

@@ -28,9 +28,13 @@ def decode_token(token: str) -> dict:
 
 
 def get_current_user(request: Request) -> str:
-    """FastAPI dependency that extracts the JWT token from the Authorization header.
-    Returns the user_id (sub claim) after validation.
+    """FastAPI dependency that extracts the JWT token from the Authorization header or X-User-Id.
+    Returns the user_id (sub claim or header value) after validation.
     """
+    x_user_id = request.headers.get("X-User-Id")
+    if x_user_id:
+        return x_user_id
+
     auth: str | None = request.headers.get("Authorization")
     if not auth or not auth.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")

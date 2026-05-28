@@ -48,6 +48,7 @@ class LoginRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
+    history: Optional[list[dict]] = None
 
 class TransactionRequest(BaseModel):
     date: str
@@ -155,6 +156,15 @@ async def upload(
     )
 
 
+@app.get("/upload/status/{job_id}")
+def upload_status(
+    job_id: str,
+    user_id: str = Depends(get_current_user),
+) -> dict:
+    """Check the status of an async upload processing job."""
+    return handlers.handle_upload_status(user_id, job_id, userstore)
+
+
 @app.get("/summary")
 def summary(
     month: Optional[str] = None,
@@ -241,7 +251,7 @@ def chat(
     request: ChatRequest,
     user_id: str = Depends(get_current_user),
 ) -> dict:
-    return handlers.handle_chat(user_id, request.message, ai_client, userstore)
+    return handlers.handle_chat(user_id, request.message, ai_client, userstore, history=request.history)
 
 
 @app.post("/chat/transaction")

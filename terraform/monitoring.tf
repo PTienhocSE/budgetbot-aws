@@ -67,6 +67,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
   threshold           = "0"
   alarm_description   = "Alarm if Lambda errors occur"
   alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
 
   dimensions = {
     FunctionName = aws_lambda_function.backend.function_name

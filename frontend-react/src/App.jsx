@@ -1,7 +1,10 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { UploadProvider } from './context/UploadContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import UploadToast from './components/UploadToast';
+import ReviewModal from './components/ReviewModal';
 
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -25,6 +28,8 @@ function AppLayout() {
           <Outlet />
         </div>
       </main>
+      <UploadToast />
+      <ReviewModal />
     </div>
   );
 }
@@ -33,19 +38,21 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          
-          <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-            <Route path="/overview" element={<Overview />} />
-            <Route path="/transactions" element={<Transactions />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/coach" element={<Coach />} />
-            <Route path="/limits" element={<Limits />} />
-            <Route path="/" element={<Navigate to="/overview" replace />} />
-          </Route>
-        </Routes>
+        <UploadProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            
+            <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+              <Route path="/overview" element={<Overview />} />
+              <Route path="/transactions" element={<Transactions />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/coach" element={<Coach />} />
+              <Route path="/limits" element={<Limits />} />
+              <Route path="/" element={<Navigate to="/overview" replace />} />
+            </Route>
+          </Routes>
+        </UploadProvider>
       </BrowserRouter>
     </AuthProvider>
   );

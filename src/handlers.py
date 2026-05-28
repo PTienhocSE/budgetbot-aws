@@ -2,6 +2,9 @@
 import csv
 import io
 from typing import Optional
+from src.config import config
+
+_local_jobs = {}
 
 
 def _parse_csv(data: bytes) -> list:
@@ -42,97 +45,192 @@ def handle_upload(
     storage,
     userstore,
 ) -> dict:
-    """Parse CSV or PDF → extract transactions via AI (for PDF) or row-by-row (for CSV) → persist to userstore."""
+    import uuid
+    from datetime import datetime, timezone
+
     key = f"{user_id}/{filename}"
     location = storage.put(key, data)
-    
-    inserted = 0
-    samples = []
-    needs_review = []
-    parsed_count = 0
-    
-    if filename.lower().endswith((".pdf", ".png", ".jpg", ".jpeg")):
-        import pypdf
-        import boto3
-        
-        text = ""
-        try:
-            reader = pypdf.PdfReader(io.BytesIO(data))
-            for page in reader.pages:
-                extracted = page.extract_text()
-                if extracted:
-                    text += extracted + "\n"
-        except Exception:
-            pass
-            
-        # Fallback to Textract if scanned PDF
-        if len(text.strip()) < 50:
-            try:
-                textract = boto3.client("textract", region_name="us-east-1")
-                resp = textract.detect_document_text(Document={"Bytes": data})
-                text = ""
-                for block in resp.get("Blocks", []):
-                    if block["BlockType"] == "LINE":
-                        text += block["Text"] + "\n"
-            except Exception as e:
-                return {
-                    "filename": filename,
-                    "stored_at": location,
-                    "error": f"Textract failed: {e}"
-                }
-                
-        # Use AI to extract transactions
-        txns = ai_client.extract_transactions_from_text(text)
-        parsed_count = len(txns)
-        for txn in txns:
-            if txn.get("category", "").lower() == "income":
-                txn["amount"] = abs(txn["amount"])
-            else:
-                txn["amount"] = -abs(txn["amount"])
-                
-            if txn.get("confidence") == "high":
-                userstore.add_transaction(user_id, txn)
-                inserted += 1
-                if len(samples) < 5:
-                    samples.append(txn)
-            else:
-                needs_review.append(txn)
-    else:
-        rows = _parse_csv(data)
-        parsed_count = len(rows)
-        for row in rows:
-            cat_result = ai_client.categorize(
-                description=row["description"], amount=row["amount"], date=row["date"]
-            )
-            txn = {
-                "date": row["date"],
-                "description": row["description"],
-                "amount": row["amount"],
-                "category": cat_result["category"],
-                "confidence": cat_result["confidence"],
-                "engine": cat_result.get("engine", "unknown")
-            }
-            if txn["category"].lower() == "income":
-                txn["amount"] = abs(txn["amount"])
-            else:
-                txn["amount"] = -abs(txn["amount"])
-                
-            if txn.get("confidence") == "high":
-                userstore.add_transaction(user_id, txn)
-                inserted += 1
-                if len(samples) < 5:
-                    samples.append(txn)
-            else:
-                needs_review.append(txn)
 
-    return {
-        "filename": filename,
-        "stored_at": location,
-        "rows_parsed": parsed_count,
-        "rows_inserted": inserted,
-        "sample_categorized": samples,
-        "needs_review": needs_review,
-    }
+    # Create a unique job ID
+    job_id = f"JOB#{uuid.uuid4().hex[:12]}"
+    now = datetime.now(timezone.utc).isoformat()
+
+    # In local mode, process the file synchronously to support local test suites and run/smoke curls
+    if config.storage_backend == "local" or config.userstore_backend == "sqlite":
+        inserted = 0
+        samples = []
+        needs_review = []
+        parsed_count = 0
+
+        if filename.lower().endswith((".pdf", ".png", ".jpg", ".jpeg")):
+            import pypdf
+            import boto3
+
+            text = ""
+            try:
+                reader = pypdf.PdfReader(io.BytesIO(data))
+                for page in reader.pages:
+                    extracted = page.extract_text()
+                    if extracted:
+                        text += extracted + "\n"
+            except Exception:
+                pass
+
+            # Fallback to Textract if scanned PDF
+            if len(text.strip()) < 50:
+                try:
+                    textract = boto3.client("textract", region_name=config.aws_region)
+                    resp = textract.detect_document_text(Document={"Bytes": data})
+                    text = ""
+                    for block in resp.get("Blocks", []):
+                        if block["BlockType"] == "LINE":
+                            text += block["Text"] + "\n"
+                except Exception as e:
+                    return {
+                        "filename": filename,
+                        "stored_at": location,
+                        "error": f"Textract failed: {e}"
+                    }
+
+            txns = ai_client.extract_transactions_from_text(text)
+            parsed_count = len(txns)
+            for txn in txns:
+                if txn.get("category", "").lower() == "income":
+                    txn["amount"] = abs(txn["amount"])
+                else:
+                    txn["amount"] = -abs(txn["amount"])
+
+                if txn.get("confidence") == "high":
+                    userstore.add_transaction(user_id, txn)
+                    inserted += 1
+                    if len(samples) < 5:
+                        samples.append(txn)
+                else:
+                    needs_review.append(txn)
+        else:
+            rows = _parse_csv(data)
+            parsed_count = len(rows)
+            for row in rows:
+                cat_result = ai_client.categorize(
+                    description=row["description"], amount=row["amount"], date=row["date"]
+                )
+                txn = {
+                    "date": row["date"],
+                    "description": row["description"],
+                    "amount": row["amount"],
+                    "category": cat_result["category"],
+                    "confidence": cat_result["confidence"],
+                    "engine": cat_result.get("engine", "unknown")
+                }
+                if txn["category"].lower() == "income":
+                    txn["amount"] = abs(txn["amount"])
+                else:
+                    txn["amount"] = -abs(txn["amount"])
+
+                if txn.get("confidence") == "high":
+                    userstore.add_transaction(user_id, txn)
+                    inserted += 1
+                    if len(samples) < 5:
+                        samples.append(txn)
+                else:
+                    needs_review.append(txn)
+
+        # Store completed job status locally
+        _local_jobs[job_id] = {
+            "job_id": job_id,
+            "status": "COMPLETED",
+            "filename": filename,
+            "created_at": now,
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "rows_parsed": parsed_count,
+            "rows_inserted": inserted,
+            "needs_review": needs_review,
+            "sample_categorized": samples,
+        }
+
+        return {
+            "job_id": job_id,
+            "filename": filename,
+            "stored_at": location,
+            "status": "COMPLETED",
+            "message": "File processed successfully (synchronous local mode).",
+            "rows_parsed": parsed_count,
+            "rows_inserted": inserted,
+            "needs_review": needs_review,
+            "sample_categorized": samples,
+        }
+
+    else:
+        # Production mode: create DynamoDB Job tracking and process asynchronously
+        _create_job_record(userstore, user_id, job_id, filename, key, now)
+
+        return {
+            "job_id": job_id,
+            "filename": filename,
+            "stored_at": location,
+            "status": "PENDING",
+            "message": "File uploaded successfully. Processing in background...",
+        }
+
+
+def _create_job_record(userstore, user_id, job_id, filename, s3_key, created_at):
+    """Create a JOB tracking record in DynamoDB."""
+    if hasattr(userstore, 'table'):
+        # DynamoDB backend - write directly
+        userstore.table.put_item(Item={
+            "PK": user_id,
+            "SK": job_id,
+            "status": "PENDING",
+            "filename": filename,
+            "s3_key": s3_key,
+            "created_at": created_at,
+        })
+    else:
+        _local_jobs[job_id] = {
+            "job_id": job_id,
+            "status": "PENDING",
+            "filename": filename,
+            "created_at": created_at,
+        }
+
+
+def handle_upload_status(user_id: str, job_id: str, userstore) -> dict:
+    """Check the status of an async upload job."""
+    if hasattr(userstore, 'table'):
+        resp = userstore.table.get_item(Key={"PK": user_id, "SK": job_id})
+        item = resp.get("Item")
+        if not item:
+            return {"status": "NOT_FOUND", "job_id": job_id}
+
+        # Convert Decimal to float for JSON serialization
+        from decimal import Decimal
+        def decimal_to_native(obj):
+            if isinstance(obj, Decimal):
+                return float(obj)
+            if isinstance(obj, dict):
+                return {k: decimal_to_native(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [decimal_to_native(i) for i in obj]
+            return obj
+
+        result = decimal_to_native(item)
+        return {
+            "job_id": job_id,
+            "status": result.get("status", "UNKNOWN"),
+            "filename": result.get("filename"),
+            "created_at": result.get("created_at"),
+            "completed_at": result.get("completed_at"),
+            "rows_parsed": result.get("rows_parsed", 0),
+            "rows_inserted": result.get("rows_inserted", 0),
+            "needs_review": result.get("needs_review", []),
+            "sample_categorized": result.get("sample_categorized", []),
+            "error_message": result.get("error_message"),
+        }
+    else:
+        job = _local_jobs.get(job_id)
+        if not job:
+            return {"status": "NOT_FOUND", "job_id": job_id}
+        return job
 
 
 def handle_summary(user_id: str, month: Optional[str], userstore) -> dict:
@@ -155,9 +253,9 @@ def handle_list_transactions(user_id: str, month: Optional[str], userstore) -> d
     return {"user_id": user_id, "month": month, "transactions": userstore.list_transactions(user_id, month=month)}
 
 
-def handle_chat(user_id: str, message: str, ai_client, userstore) -> dict:
+def handle_chat(user_id: str, message: str, ai_client, userstore, history: list[dict] = None) -> dict:
     # Pass userstore to the AI client so it can autonomously call tools to fetch data
-    reply = ai_client.chat(user_id, message, userstore)
+    reply = ai_client.chat(user_id, message, userstore, history=history)
     
     return {
         "reply": reply

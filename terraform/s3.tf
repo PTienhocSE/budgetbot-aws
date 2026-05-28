@@ -101,6 +101,18 @@ resource "aws_s3_bucket_public_access_block" "uploads_pab" {
   restrict_public_buckets = true
 }
 
+# S3 Event Notification → triggers Processor Lambda on new file uploads
+resource "aws_s3_bucket_notification" "uploads_notification" {
+  bucket = aws_s3_bucket.uploads.id
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.file_processor.arn
+    events              = ["s3:ObjectCreated:*"]
+  }
+
+  depends_on = [aws_lambda_permission.allow_s3_processor]
+}
+
 resource "aws_s3_bucket" "frontend" {
   bucket = "${var.app_name}-${var.environment}-frontend-${random_id.bucket_suffix.hex}"
   tags = {

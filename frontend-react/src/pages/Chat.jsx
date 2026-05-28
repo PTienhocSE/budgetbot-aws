@@ -90,7 +90,18 @@ function Chat() {
       setChatLoading(true);
       
       try {
-        const res = await apiClient.post('/chat', { message: msg });
+        const historyPayload = [];
+        for (const h of chatHistory) {
+          if (historyPayload.length === 0 && h.sender === 'bot') {
+            continue;
+          }
+          historyPayload.push({
+            role: h.sender === 'user' ? 'user' : 'assistant',
+            content: h.text
+          });
+        }
+
+        const res = await apiClient.post('/chat', { message: msg, history: historyPayload });
         setChatHistory(prev => [...prev, { sender: 'bot', text: res.data.reply }]);
       } catch (err) {
         setChatHistory(prev => [...prev, { sender: 'bot', text: 'Error connecting to AI.' }]);

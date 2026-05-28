@@ -14,6 +14,14 @@ resource "aws_dynamodb_table" "transactions" {
     type = "S"
   }
 
+  ttl {
+    attribute_name = "expire_at"
+    enabled        = true
+  }
+
+  stream_enabled   = true
+  stream_view_type = "NEW_AND_OLD_IMAGES"
+
   point_in_time_recovery {
     enabled = true
   }
