@@ -705,6 +705,55 @@
         <div class="slide-no"></div>
       </section>
 
+      <!-- ============ SLIDE 6.5: WHY 2 LAMBDAS? ============ -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-microchip"></i><span>ASYNC ARCHITECTURE</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Why separate API and Processor?</div>
+          <h2 class="section-title">Tại sao cần tách ra 2 Lambda?</h2>
+          <div class="three">
+            <div class="card">
+              <h3><i class="fas fa-stopwatch orange"></i> 1. Tránh Timeout</h3>
+              <p class="muted" style="font-size: 13px">
+                API Gateway có giới hạn cứng 29 giây. Xử lý AI/OCR cho file PDF dài thường tốn 1-2 phút. Tách ra giúp File-Processor chạy ngầm tối đa 15 phút mà không văng lỗi 504.
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-smile orange"></i> 2. UX Mượt mà</h3>
+              <p class="muted" style="font-size: 13px">
+                Frontend không bị treo chờ xử lý. API phản hồi "PENDING" ngay lập tức, Frontend hiển thị thanh xoay (Polling) mang lại trải nghiệm người dùng tốt hơn.
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-wallet orange"></i> 3. Tối ưu Chi phí</h3>
+              <p class="muted" style="font-size: 13px">
+                Cấp RAM nhỏ (256MB) cho API để tiết kiệm tiền cho các tác vụ lấy dữ liệu/chat. Chỉ cấp RAM to (1024MB) cho File-Processor chuyên trị các file nặng.
+              </p>
+            </div>
+          </div>
+          <div class="two" style="margin-top: 20px;">
+            <div class="card">
+              <h3><i class="fas fa-layer-group orange"></i> 4. Khả năng Scale Độc Lập</h3>
+              <p class="muted" style="font-size: 13px">
+                Nếu lượng file upload tăng đột biến, SQS/EventBridge làm "bộ giảm xóc" (Shock Absorber), scale File-Processor mà không làm sập Database hay ảnh hưởng luồng API chính.
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-lock orange"></i> 5. Least Privilege</h3>
+              <p class="muted" style="font-size: 13px">
+                Bảo mật tối đa: API (Public) không có quyền đọc file, chỉ có quyền sinh link S3 Presigned URL. File-Processor (Internal) mới có quyền đọc dữ liệu nhạy cảm.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
       <!-- ============ SLIDE 7: VPC & NETWORK ============ -->
       <section class="slide-container">
         <div class="grid-pattern"></div>

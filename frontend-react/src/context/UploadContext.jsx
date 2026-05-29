@@ -12,8 +12,11 @@ export function UploadProvider({ children }) {
   const [jobs, setJobs] = useState({});
   // Toast notification queue
   const [toasts, setToasts] = useState([]);
-  // Global state for transactions needing manual review
   const [reviewTransactions, setReviewTransactions] = useState([]);
+  
+  // Refresh trigger to avoid window.reload()
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const triggerRefresh = useCallback(() => setRefreshTrigger(p => p + 1), []);
   
   const pollRefs = useRef({});
 
@@ -124,6 +127,8 @@ export function UploadProvider({ children }) {
     setReviewTransactions,
     submitUpload,
     removeToast,
+    refreshTrigger,
+    triggerRefresh,
   };
 
   return (

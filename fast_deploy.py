@@ -37,7 +37,7 @@ def main():
                 with open(file_path, "rb") as f:
                     zf.writestr(zinfo, f.read())
     
-    print("6. Deploying to AWS Lambda...")
+    print("6. Deploying backend to AWS Lambda...")
     result = subprocess.run(
         "aws lambda update-function-code --function-name budgetbot-hackathon-backend --zip-file fileb://package.zip --publish",
         shell=True,
@@ -50,6 +50,20 @@ def main():
     else:
         print("Error deploying backend:")
         print(result.stderr)
+
+    print("6.5. Deploying file-processor to AWS Lambda...")
+    result2 = subprocess.run(
+        "aws lambda update-function-code --function-name budgetbot-hackathon-file-processor --zip-file fileb://package.zip --publish",
+        shell=True,
+        capture_output=True,
+        text=True
+    )
+    
+    if result2.returncode == 0:
+        print("Success! File processor deployed.")
+    else:
+        print("Error deploying file processor:")
+        print(result2.stderr)
 
     print("7. Building frontend...")
     subprocess.run("cd frontend-react && npm install && npm run build", shell=True, check=True)

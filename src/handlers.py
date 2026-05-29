@@ -49,11 +49,17 @@ def handle_upload(
     from datetime import datetime, timezone
 
     key = f"{user_id}/{filename}"
-    location = storage.put(key, data)
-
+    
     # Create a unique job ID
     job_id = f"JOB#{uuid.uuid4().hex[:12]}"
     now = datetime.now(timezone.utc).isoformat()
+
+    # In production mode (async), we MUST create the DynamoDB job record BEFORE uploading to S3
+    # Otherwise, the S3 event triggers the processor Lambda instantly, and it might not find the job record.
+    if config.storage_backend != "local" and config.userstore_backend != "sqlite":
+        _create_job_record(userstore, user_id, job_id, filename, key, now)
+
+    location = storage.put(key, data)
 
     # In local mode, process the file synchronously to support local test suites and run/smoke curls
     if config.storage_backend == "local" or config.userstore_backend == "sqlite":
@@ -162,8 +168,7 @@ def handle_upload(
 
     else:
         # Production mode: create DynamoDB Job tracking and process asynchronously
-        _create_job_record(userstore, user_id, job_id, filename, key, now)
-
+        # (JOB record is already created above BEFORE S3 upload to avoid race conditions)
         return {
             "job_id": job_id,
             "filename": filename,
@@ -308,8 +313,9 @@ def handle_chat_transaction(user_id: str, message: str, ai_client, userstore) ->
             "detail": "Could not parse transaction. Please provide amount, description and date (e.g. 'I spent $12 on coffee yesterday')."
         }
 
-    # Ask AI to categorize
-    cat_result = ai_client.categorize(
+    # Ask AI to categorize (force Bedrock bypassing Local fallback)
+    ai_engine = getattr(ai_client, "primary", ai_client)
+    cat_result = ai_engine.categorize(
         description=txn["description"],
         amount=txn["amount"],
         date=txn["date"],

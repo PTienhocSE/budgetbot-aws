@@ -328,12 +328,6 @@ class LocalAI:
                 if kw in desc_lower:
                     # Đã có trong từ khoá thì chắc chắn đúng, confidence = high
                     return {"category": category, "confidence": "high", "engine": "local"}
-        # Positive amount → income heuristic
-        try:
-            if float(amount) > 0:
-                return {"category": "Income", "confidence": "low", "engine": "local"}
-        except (TypeError, ValueError):
-            pass
         return {
             "category": "Other",
             "confidence": "low",
