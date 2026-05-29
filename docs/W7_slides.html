@@ -1965,7 +1965,8 @@
       const slides = document.querySelectorAll(".slide-container");
       const totalSlides = slides.length;
 
-
+      function updateSlides() {
+        slides.forEach((slide, index) => {
           if (document.body.classList.contains("presentation-mode")) {
             if (index === currentSlide) {
               slide.classList.add("active");
