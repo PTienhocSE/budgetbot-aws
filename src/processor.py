@@ -90,15 +90,31 @@ def handler(event, context):
 
 def _find_job_id(table, user_id, s3_key):
     """Find the JOB record that matches this S3 key."""
+    import unicodedata
+    
     resp = table.query(
         KeyConditionExpression="PK = :u AND begins_with(SK, :p)",
         ExpressionAttributeValues={":u": user_id, ":p": "JOB#"},
-        ScanIndexForward=False,  # newest first
-        Limit=20,
+        ScanIndexForward=False,
     )
-    for item in resp.get("Items", []):
-        if item.get("s3_key") == s3_key and item.get("status") in ("PENDING", "PROCESSING"):
+    
+    s3_key_norm = unicodedata.normalize('NFC', s3_key)
+    
+    items = resp.get("Items", [])
+    # Sort by created_at descending to ensure fallback picks the most recent job
+    items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    
+    # First try to match by exact filename (normalized)
+    for item in items:
+        item_key = item.get("s3_key", "")
+        if unicodedata.normalize('NFC', item_key) == s3_key_norm and item.get("status") in ("PENDING", "PROCESSING"):
             return item["SK"]
+            
+    # Fallback: if no exact match but there is a pending job for this user, assume it's the one
+    for item in items:
+        if item.get("status") in ("PENDING", "PROCESSING"):
+            return item["SK"]
+            
     return None
 
 
@@ -226,7 +242,8 @@ def _extract_text(data, filename, region):
     text = ""
 
     # Try local PDF parsing first
-    if filename.lower().endswith(".pdf"):
+    is_pdf = filename.lower().endswith(".pdf")
+    if is_pdf:
         try:
             import pypdf
             reader = pypdf.PdfReader(io.BytesIO(data))
@@ -239,6 +256,9 @@ def _extract_text(data, filename, region):
 
     # Fallback to Textract if scanned PDF or image
     if len(text.strip()) < 50:
+        if is_pdf:
+            raise ValueError("File PDF này là dạng ảnh/scan. Hiện tại hệ thống không hỗ trợ quét PDF dạng ảnh trực tiếp. Vui lòng chuyển sang định dạng PNG/JPEG hoặc dùng PDF dạng văn bản.")
+            
         try:
             textract = boto3.client("textract", region_name=region)
             resp = textract.detect_document_text(Document={"Bytes": data})
@@ -248,6 +268,7 @@ def _extract_text(data, filename, region):
                     text += block["Text"] + "\n"
         except Exception as e:
             logger.error("Textract failed: %s", str(e))
+            raise ValueError(f"Không thể đọc chữ từ ảnh: {str(e)}")
             raise
 
     return text

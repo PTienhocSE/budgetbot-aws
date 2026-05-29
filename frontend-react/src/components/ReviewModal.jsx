@@ -5,7 +5,7 @@ import { formatCurrency } from '../utils/format';
 import { useNavigate } from 'react-router-dom';
 
 function ReviewModal() {
-  const { reviewTransactions, setReviewTransactions } = useUpload();
+  const { reviewTransactions, setReviewTransactions, triggerRefresh } = useUpload();
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const navigate = useNavigate();
@@ -26,9 +26,11 @@ function ReviewModal() {
       const cleanTxns = reviewTransactions.map(({ jobId, ...rest }) => rest);
       await apiClient.post('/transactions/batch', { transactions: cleanTxns });
       setReviewTransactions([]);
-      // Force a refresh of the transactions page if we're on it, or navigate there
+      
+      if (typeof triggerRefresh === 'function') {
+        triggerRefresh();
+      }
       navigate('/transactions', { replace: true });
-      window.location.reload(); // Simple way to ensure data updates across all components
     } catch (err) {
       setErrorMsg('Batch save failed: ' + (err.response?.data?.detail || err.message));
     } finally {

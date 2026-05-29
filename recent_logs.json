@@ -1,0 +1,70 @@
+[
+  {
+    "time": "2026-05-29T09:24:27.659000",
+    "msg": "START RequestId: eed83283-f031-4f87-95e6-0df5353db172 Version: $LATEST"
+  },
+  {
+    "time": "2026-05-29T09:24:27.660000",
+    "msg": "[INFO]\t2026-05-29T02:24:27.660Z\teed83283-f031-4f87-95e6-0df5353db172\tProcessor Lambda invoked with event: {\"Records\": [{\"eventVersion\": \"2.1\", \"eventSource\": \"aws:s3\", \"awsRegion\": \"us-east-1\", \"eventTime\": \"2026-05-29T02:24:26.815Z\", \"eventName\": \"ObjectCreated:Put\", \"userIdentity\": {\"principalId\": \"AWS:AROAY4EKFXLGZQBZTGIZA:budgetbot-hackathon-backend\"}, \"requestParameters\": {\"sourceIPAddress\": \"10.0.1.107\"}, \"responseElements\": {\"x-amz-request-id\": \"JB21ZR2TJZQ5ZWH8\", \"x-amz-id-2\": \"uHPSLDlE9NNDoFPxVrfPopcajEUMEz/XnxSVLFXKOi9zGismxrrJgJeMljfyRE2WqTkD43GTJrheGn7MsI0SfJMqzzaSIO/s\"}, \"s3\": {\"s3SchemaVersion\": \"1.0\", \"configurationId\": \"tf-s3-lambda-20260528100206873700000001\", \"bucket\": {\"name\": \"budgetbot-hackathon-uploads-873fca3d\", \"ownerIdentity\": {\"principalId\": \"A38OIB6QFL8K80\"}, \"arn\": \"arn:aws:s3:::budgetbot-hackathon-uploads-873fca3d\"}, \"object\": {\"key\": \"a97bb277-461e-4d0c-8e5c-70b3e2e6549c/Invoice-94S0CFBK-0004.pdf\", \"size\": 31698, \"eTag\": \"02d2db771b7ab6adf1da7433113beabc\", \"sequencer\": \"006A18F8DAAFD32754\"}}}]}"
+  },
+  {
+    "time": "2026-05-29T09:24:27.747000",
+    "msg": "[INFO]\t2026-05-29T02:24:27.747Z\teed83283-f031-4f87-95e6-0df5353db172\tNo JOB record found for key a97bb277-461e-4d0c-8e5c-70b3e2e6549c/Invoice-94S0CFBK-0004.pdf, skipping (might be a direct S3 upload)"
+  },
+  {
+    "time": "2026-05-29T09:24:27.751000",
+    "msg": "END RequestId: eed83283-f031-4f87-95e6-0df5353db172"
+  },
+  {
+    "time": "2026-05-29T09:24:27.751000",
+    "msg": "REPORT RequestId: eed83283-f031-4f87-95e6-0df5353db172\tDuration: 90.85 ms\tBilled Duration: 91 ms\tMemory Size: 1536 MB\tMax Memory Used: 133 MB"
+  },
+  {
+    "time": "2026-05-29T09:24:29.519000",
+    "msg": "START RequestId: 41cae20d-8436-4880-84b1-bf6b2cf72d94 Version: $LATEST"
+  },
+  {
+    "time": "2026-05-29T09:24:29.520000",
+    "msg": "[INFO]\t2026-05-29T02:24:29.520Z\t41cae20d-8436-4880-84b1-bf6b2cf72d94\tProcessor Lambda invoked with event: {\"Records\": [{\"eventVersion\": \"2.1\", \"eventSource\": \"aws:s3\", \"awsRegion\": \"us-east-1\", \"eventTime\": \"2026-05-29T02:24:28.537Z\", \"eventName\": \"ObjectCreated:Put\", \"userIdentity\": {\"principalId\": \"AWS:AROAY4EKFXLGZQBZTGIZA:budgetbot-hackathon-backend\"}, \"requestParameters\": {\"sourceIPAddress\": \"10.0.1.107\"}, \"responseElements\": {\"x-amz-request-id\": \"90XEWA8CD8PWK8NP\", \"x-amz-id-2\": \"4+mQtioQ2E4sofZ5Mpo6CeFV5JvoYHb0n3OVmOZyWhcltM40yDkWXPwn4MEz0oyOjCXQeIshRSkjcRCPe6gnPetJDcJ3mrp8\"}, \"s3\": {\"s3SchemaVersion\": \"1.0\", \"configurationId\": \"tf-s3-lambda-20260528100206873700000001\", \"bucket\": {\"name\": \"budgetbot-hackathon-uploads-873fca3d\", \"ownerIdentity\": {\"principalId\": \"A38OIB6QFL8K80\"}, \"arn\": \"arn:aws:s3:::budgetbot-hackathon-uploads-873fca3d\"}, \"object\": {\"key\": \"a97bb277-461e-4d0c-8e5c-70b3e2e6549c/test_hybrid.csv\", \"size\": 927, \"eTag\": \"2380d8d4d3e96ee4eba390b97ccc5fa1\", \"sequencer\": \"006A18F8DC7B3A6545\"}}}]}"
+  },
+  {
+    "time": "2026-05-29T09:24:29.601000",
+    "msg": "[INFO]\t2026-05-29T02:24:29.601Z\t41cae20d-8436-4880-84b1-bf6b2cf72d94\tNo JOB record found for key a97bb277-461e-4d0c-8e5c-70b3e2e6549c/test_hybrid.csv, skipping (might be a direct S3 upload)"
+  },
+  {
+    "time": "2026-05-29T09:24:29.604000",
+    "msg": "END RequestId: 41cae20d-8436-4880-84b1-bf6b2cf72d94"
+  },
+  {
+    "time": "2026-05-29T09:24:29.604000",
+    "msg": "REPORT RequestId: 41cae20d-8436-4880-84b1-bf6b2cf72d94\tDuration: 84.53 ms\tBilled Duration: 85 ms\tMemory Size: 1536 MB\tMax Memory Used: 133 MB"
+  },
+  {
+    "time": "2026-05-29T09:32:39.860000",
+    "msg": "INIT_START Runtime Version: python:3.11.mainlinev2.v7\tRuntime Version ARN: arn:aws:lambda:us-east-1::runtime:c9b91921de6ea9e2c7350a19730ba04bb4ad6649e7e657e7e92d5b373d2225e5"
+  },
+  {
+    "time": "2026-05-29T09:32:40.202000",
+    "msg": "START RequestId: 35e1bc23-8004-4190-841f-dcca714459bd Version: $LATEST"
+  },
+  {
+    "time": "2026-05-29T09:32:40.203000",
+    "msg": "[INFO]\t2026-05-29T02:32:40.203Z\t35e1bc23-8004-4190-841f-dcca714459bd\tProcessor Lambda invoked with event: {\"Records\": [{\"eventVersion\": \"2.1\", \"eventSource\": \"aws:s3\", \"awsRegion\": \"us-east-1\", \"eventTime\": \"2026-05-29T02:32:38.605Z\", \"eventName\": \"ObjectCreated:Put\", \"userIdentity\": {\"principalId\": \"AWS:AROAY4EKFXLGZQBZTGIZA:budgetbot-hackathon-backend\"}, \"requestParameters\": {\"sourceIPAddress\": \"10.0.2.237\"}, \"responseElements\": {\"x-amz-request-id\": \"ZDJT5KRMSV81132S\", \"x-amz-id-2\": \"mNI+R4fbzfzvZbmDTGVvNUvAHrmZ5NiUYjdAOSnpC1yTKKA13qh32sR52VF7bx57yq8+TuCkKjhgN4C1XvgjpM/HJl8P2xvv\"}, \"s3\": {\"s3SchemaVersion\": \"1.0\", \"configurationId\": \"tf-s3-lambda-20260528100206873700000001\", \"bucket\": {\"name\": \"budgetbot-hackathon-uploads-873fca3d\", \"ownerIdentity\": {\"principalId\": \"A38OIB6QFL8K80\"}, \"arn\": \"arn:aws:s3:::budgetbot-hackathon-uploads-873fca3d\"}, \"object\": {\"key\": \"a97bb277-461e-4d0c-8e5c-70b3e2e6549c/Electronic+ticket+receipt%2C+NgA%CC%83%C2%A0y+22+ThA%CC%83%C2%A1ng+12+for+MR+PHUC+TIEN+TRAN.pdf\", \"size\": 53849, \"eTag\": \"bdc0cfef1c0c32a851f52e724d17697c\", \"sequencer\": \"006A18FAC67FF8D65F\"}}}]}"
+  },
+  {
+    "time": "2026-05-29T09:32:40.273000",
+    "msg": "[INFO]\t2026-05-29T02:32:40.273Z\t35e1bc23-8004-4190-841f-dcca714459bd\tFound credentials in environment variables."
+  },
+  {
+    "time": "2026-05-29T09:32:40.586000",
+    "msg": "[INFO]\t2026-05-29T02:32:40.586Z\t35e1bc23-8004-4190-841f-dcca714459bd\tNo JOB record found for key a97bb277-461e-4d0c-8e5c-70b3e2e6549c/Electronic ticket receipt, NgÃ y 22 ThÃ¡ng 12 for MR PHUC TIEN TRAN.pdf, skipping (might be a direct S3 upload)"
+  },
+  {
+    "time": "2026-05-29T09:32:40.590000",
+    "msg": "END RequestId: 35e1bc23-8004-4190-841f-dcca714459bd"
+  },
+  {
+    "time": "2026-05-29T09:32:40.590000",
+    "msg": "REPORT RequestId: 35e1bc23-8004-4190-841f-dcca714459bd\tDuration: 387.20 ms\tBilled Duration: 727 ms\tMemory Size: 1536 MB\tMax Memory Used: 96 MB\tInit Duration: 339.39 ms"
+  }
+]

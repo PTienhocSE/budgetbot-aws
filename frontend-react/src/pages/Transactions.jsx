@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import { formatCurrency } from '../utils/format';
+import { useUpload } from '../context/UploadContext';
 
 function Transactions() {
   const [transactions, setTransactions] = useState([]);
@@ -8,6 +9,8 @@ function Transactions() {
   const [month, setMonth] = useState('');
   const [editingTxn, setEditingTxn] = useState(null);
   const [debug, setDebug] = useState(false);
+  
+  const { refreshTrigger } = useUpload();
   
   useEffect(() => {
     window.enableDebug = () => setDebug(true);
@@ -62,7 +65,7 @@ function Transactions() {
     return () => {
       isActive = false;
     };
-  }, [month]);
+  }, [month, refreshTrigger]);
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this transaction?")) return;
