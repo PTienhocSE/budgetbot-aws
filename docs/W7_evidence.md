@@ -230,15 +230,17 @@ sequenceDiagram
 ---
 
 ## 6. Monitoring
-- **Dashboard Screenshot:** `[Chèn ảnh CloudWatch Dashboard]`
+- **Dashboard Screenshot:**
 - **Alarm Config:**
   - Metric Alarm: SNS when Lambda error > 0
   - Budget alarm: Triggers SNS at 80% of $10 budget
   - Cost Anomaly Detection: Enabled for abnormal spend alerts
 - **Log Insights Query:** Retention 14 days, query for error spikes.
 - **Evidence Placeholders:**
-  - CloudWatch Dashboard image (`docs/images/cw_dashboard.png`)
-  - Alarm configuration screenshot (`docs/images/alarms.png`)
+
+![alt text](images/dashboard_cloudwatch.png)
+![alt text](images/budgetbot-hackathon-monthly-100usd.png)
+![alt text](images/alarms.png)
 
 ---
 
