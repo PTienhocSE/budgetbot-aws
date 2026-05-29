@@ -484,8 +484,9 @@ def handler(event, context):
   - Event Pattern matching in EventBridge (`docs/images/eventbridge_rule.png`)
   - Target Lambda remediation trigger (`docs/images/eventbridge_target.png`)
   - Execution log showing auto-remediation action (`docs/images/remediation_log.png`)
-
+![EventBridge Rule](images/eventbridge_rule.png)
 ![EventBridge Target Lambda](images/eventbridge_target.png)
+![Remediation Log](images/remediation_log.png)
 
 
 ---
