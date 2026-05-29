@@ -81,15 +81,17 @@ sequenceDiagram
   2. *DynamoDB vs RDS:* Chọn DynamoDB để scale‑to‑zero tiết kiệm chi phí, đổi lại không hỗ trợ query quan hệ phức tạp.
   3. *No NAT Gateway vs NAT Gateway:* Đặt VPC Interface Endpoints cho AI (Bedrock & Textract), tiết kiệm $32/tháng tiền NAT Gateway, đổi lại chỉ có thể gọi các service hỗ trợ PrivateLink.
 
+- **Handle upload pdf flow:**
+![alt text](images/flow_lambda.png)
+
 ---
 
 ## 4. Cost Evidence & Drivers
-> [!NOTE]
-> Chụp 3 ảnh màn hình và lưu vào `docs/images/` rồi thay link tương ứng dưới đây.
 
-- **Ảnh cuối Day 1 EOD:** `[Chèn ảnh Cost Explorer Day 1]`
-- **Ảnh cuối Day 2 EOD:** `[Chèn ảnh Cost Explorer Day 2]`
-- **Ảnh sáng Demo Day:** `[Chèn ảnh Cost Explorer Demo Day]`
+- **Cost:** 
+
+![alt text](images/cost.png)
+
 - **Top 3 Cost Drivers:**
   1. **Amazon Bedrock** (Token inference)
   2. **KMS** (Phí API mã hoá/giải mã)

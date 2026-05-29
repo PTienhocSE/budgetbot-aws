@@ -330,27 +330,6 @@
         background: rgba(255, 153, 0, 0.2);
         transform: scale(1.05);
       }
-      .presenter {
-        position: absolute;
-        left: 78px;
-        bottom: 38px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        z-index: 10;
-        font-size: 13px;
-        font-weight: 600;
-        color: #90caf9;
-        background: rgba(66, 165, 245, 0.08);
-        border: 1px solid rgba(66, 165, 245, 0.25);
-        padding: 6px 14px;
-        border-radius: 999px;
-        backdrop-filter: blur(4px);
-      }
-      .presenter i {
-        color: #42a5f5;
-        font-size: 12px;
-      }
       @media print {
         body {
           background: white;
@@ -1609,7 +1588,7 @@
               >
                 <li>
                   <b>Monthly Budget:</b>
-                  <span class="metric" style="font-size: 28px">$10</span>
+                  <span class="metric" style="font-size: 28px">$100</span>
                 </li>
                 <li><b>Alarm:</b> 80% triggers SNS email notification</li>
                 <li>
@@ -1916,60 +1895,6 @@
       const slides = document.querySelectorAll(".slide-container");
       const totalSlides = slides.length;
 
-      // Presenter name per slide (0-indexed)
-      const presenters = [
-        "Trần Phúc Tiến", // 0  Cover
-        "Trần Phúc Tiến", // 1  Team
-        "Trần Phúc Tiến", // 2  Backend Task Assignment
-        "Trần Phúc Tiến", // 3  Domain & Use Case
-        "Võ Hồng Đức", // 4  Architecture (Diagram Design)
-        "Trần Phúc Tiến", // 5  Processing Flow (Async S3 Processing)
-        "Trần Phúc Tiến", // 6  Trade-offs
-        "Bùi Thị Thùy Trang", // 7  VPC & Network (Terraform IaC)
-        "Bùi Thị Thùy Trang", // 8  VPC Evidence
-        "Bùi Thị Thùy Trang", // 9  VPC Flow Logs
-        "Bùi Thị Thùy Trang", // 10 IAM & Security (Terraform IAM Roles)
-        "Bùi Thị Thùy Trang", // 11 IAM Evidence
-        "Bùi Thị Thùy Trang", // 12 IAM Evidence 2
-        "Bùi Thị Thùy Trang", // 13 KMS (KMS Encryption)
-        "Bùi Thị Thùy Trang", // 14 KMS Evidence
-        "Nguyễn Ngọc Giao", // 15 Lambda Config (FastAPI Routers, Mangum)
-        "Nguyễn Ngọc Giao", // 16 Lambda Evidence
-        "Bùi Thị Thùy Trang", // 17 API Gateway (Terraform IaC)
-        "Bùi Thị Thùy Trang", // 18 API Gateway Evidence
-        "Bùi Thị Thùy Trang", // 19 CloudFront & S3 (Terraform IaC)
-        "Bùi Thị Thùy Trang", // 20 CloudFront Evidence
-        "Nguyễn Tấn Huy", // 21 DynamoDB (Schema Design PK/SK/GSI)
-        "Nguyễn Tấn Huy", // 22 DynamoDB Evidence
-        "Nguyễn Tấn Huy", // 23 DynamoDB Evidence 2
-        "Trần Quốc Kiệt", // 24 Bedrock & Textract (Converse API, Tool-Calling)
-        "Võ Hồng Đức", // 25 EventBridge Self-Healing (S3 Remediation Lambda)
-        "Võ Hồng Đức", // 26 EventBridge Evidence
-        "Nguyễn Quách Khang Ninh", // 27 Budget & Alarms (CloudWatch, AWS Budgets)
-        "Nguyễn Quách Khang Ninh", // 28 Budget Evidence
-        "Nguyễn Quách Khang Ninh", // 29 Cost Breakdown (Cost Guard)
-        "Nguyễn Quách Khang Ninh", // 30 Cost Optimization
-        "Nguyễn Tấn Huy", // 31 Backup & Recovery (Backup Plan)
-        "Trần Phúc Tiến", // 32 Closing
-      ];
-
-      function updateSlides() {
-        slides.forEach((slide, index) => {
-          // Slide number
-          let noEl = slide.querySelector(".slide-no");
-          if (noEl)
-            noEl.innerText =
-              String(index + 1).padStart(2, "0") + " / " + totalSlides;
-
-          // // Presenter tag
-          // let presEl = slide.querySelector('.presenter');
-          // if (!presEl) {
-          //   presEl = document.createElement('div');
-          //   presEl.className = 'presenter';
-          //   slide.appendChild(presEl);
-          // }
-          // const name = presenters[index] || '';
-          // presEl.innerHTML = '<i class="fas fa-microphone"></i> ' + name;
 
           if (document.body.classList.contains("presentation-mode")) {
             if (index === currentSlide) {
