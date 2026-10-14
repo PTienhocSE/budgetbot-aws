@@ -1,8 +1,7 @@
 """User store adapter for auth users — DynamoDB in AWS, SQLite for local dev."""
+import json
 import uuid
 import bcrypt
-import boto3
-from boto3.dynamodb.conditions import Key
 from src.config import config
 
 
@@ -12,6 +11,7 @@ def _use_dynamodb() -> bool:
 
 def _get_table():
     """Return the DynamoDB Table resource for the users table."""
+    import boto3
     if not config.users_table:
         raise ValueError("USERS_TABLE env var not set")
     return boto3.resource("dynamodb", region_name=config.aws_region).Table(config.users_table)
@@ -50,6 +50,7 @@ def _check_password(password: str, hashed: str) -> bool:
 def get_user_by_username(username: str) -> dict | None:
     """Look up a user by username via the GSI. Returns the item dict or None."""
     if _use_dynamodb():
+        from boto3.dynamodb.conditions import Key
         table = _get_table()
         resp = table.query(
             IndexName="username-index",
@@ -140,54 +141,77 @@ def get_caps(user_id: str) -> dict:
     user = get_user_by_id(user_id)
     if not user:
         return {}
-    return user.get("caps", {})
+    caps = user.get("caps", {})
+    if isinstance(caps, str):
+        try:
+            caps = json.loads(caps)
+        except Exception:
+            caps = {}
+    return {k: float(v) for k, v in caps.items()}
 
 
 def set_cap(user_id: str, category: str, amount: float) -> dict:
     """Set or update a budget cap for a specific category."""
-    table = _get_table()
-    from decimal import Decimal
-    
-    # We use an UpdateExpression to add/update the specific category in the caps Map.
-    # If the caps attribute doesn't exist yet, we can't directly set a nested attribute,
-    # so we must handle that case.
-    
-    # Fetch user first to see if 'caps' exists
     user = get_user_by_id(user_id)
     if user is None:
         raise ValueError("User not found")
         
     caps = user.get("caps", {})
-    caps[category] = Decimal(str(amount))
-    
-    resp = table.update_item(
-        Key={"PK": user_id},
-        UpdateExpression="SET caps = :c",
-        ExpressionAttributeValues={":c": caps},
-        ReturnValues="ALL_NEW"
-    )
-    
-    new_caps = resp.get("Attributes", {}).get("caps", {})
-    return {k: float(v) for k, v in new_caps.items()}
+    if isinstance(caps, str):
+        try:
+            caps = json.loads(caps)
+        except Exception:
+            caps = {}
+
+    if _use_dynamodb():
+        table = _get_table()
+        from decimal import Decimal
+        caps[category] = Decimal(str(amount))
+        resp = table.update_item(
+            Key={"PK": user_id},
+            UpdateExpression="SET caps = :c",
+            ExpressionAttributeValues={":c": caps},
+            ReturnValues="ALL_NEW"
+        )
+        new_caps = resp.get("Attributes", {}).get("caps", {})
+        return {k: float(v) for k, v in new_caps.items()}
+    else:
+        caps[category] = float(amount)
+        conn = _get_sqlite_conn()
+        conn.execute("UPDATE users SET caps = ? WHERE PK = ?", (json.dumps(caps), user_id))
+        conn.commit()
+        return caps
 
 
 def delete_cap(user_id: str, category: str) -> dict:
     """Delete a budget cap for a specific category."""
-    table = _get_table()
     user = get_user_by_id(user_id)
     if user is None:
         raise ValueError("User not found")
         
     caps = user.get("caps", {})
+    if isinstance(caps, str):
+        try:
+            caps = json.loads(caps)
+        except Exception:
+            caps = {}
     if category in caps:
         del caps[category]
         
-    resp = table.update_item(
-        Key={"PK": user_id},
-        UpdateExpression="SET caps = :c",
-        ExpressionAttributeValues={":c": caps},
-        ReturnValues="ALL_NEW"
-    )
-    
-    new_caps = resp.get("Attributes", {}).get("caps", {})
-    return {k: float(v) for k, v in new_caps.items()}
+    if _use_dynamodb():
+        table = _get_table()
+        from decimal import Decimal
+        dynamo_caps = {k: Decimal(str(v)) for k, v in caps.items()}
+        resp = table.update_item(
+            Key={"PK": user_id},
+            UpdateExpression="SET caps = :c",
+            ExpressionAttributeValues={":c": dynamo_caps},
+            ReturnValues="ALL_NEW"
+        )
+        new_caps = resp.get("Attributes", {}).get("caps", {})
+        return {k: float(v) for k, v in new_caps.items()}
+    else:
+        conn = _get_sqlite_conn()
+        conn.execute("UPDATE users SET caps = ? WHERE PK = ?", (json.dumps(caps), user_id))
+        conn.commit()
+        return {k: float(v) for k, v in caps.items()}

@@ -11,6 +11,7 @@ Runs **fully locally** with rule-based categorization stub. Flip env vars to use
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+.venv\Scripts\activate
 pip install -r requirements.txt
 
 cp .env.example .env
