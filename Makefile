@@ -1,4 +1,4 @@
-.PHONY: install run test clean
+.PHONY: install run test clean db-up db-down db-logs
 
 install:
 	python3 -m venv .venv
@@ -12,3 +12,12 @@ test:
 
 clean:
 	rm -rf _data __pycache__ .pytest_cache src/__pycache__ src/adapters/__pycache__ tests/__pycache__
+
+db-up:
+	docker compose up -d
+
+db-down:
+	docker compose down
+
+db-logs:
+	docker compose logs -f db
